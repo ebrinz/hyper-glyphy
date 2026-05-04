@@ -27,7 +27,7 @@ DATA_PROCESSED = _LANG_ROOT / "data" / "processed"
 RESULTS_DIR = _LANG_ROOT / "results"
 GLOVE_PATH = _REPO_ROOT / "languages" / "sumerian" / "data" / "processed" / "glove.6B.300d.txt"
 
-RIDGE_ALPHA = 0.001
+RIDGE_ALPHA = 0.1
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 

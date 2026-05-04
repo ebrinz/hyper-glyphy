@@ -27,13 +27,13 @@
     "glove": {
       "dim": 300,
       "dtype": "float16",
-      "ridge_alpha": 0.001,
+      "ridge_alpha": 0.1,
       "ridge_source": "models/ridge_weights.npz",
       "target_source": "languages/sumerian/data/processed/glove.6B.300d.txt",
       "accuracy": {
-        "top1": 30.985915492957744,
-        "top5": 40.76222038111019,
-        "top10": 45.15327257663629
+        "top1": 31.56586578293289,
+        "top5": 40.67937033968517,
+        "top10": 44.573322286661146
       }
     }
   }
