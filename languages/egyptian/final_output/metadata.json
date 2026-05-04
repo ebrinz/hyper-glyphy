@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "methodology": "Hyper-glyphy dual-view (Egyptian 1536d -> whitened-EmbeddingGemma 768d primary, GloVe 300d secondary)",
+  "shared": {
+    "vocab_size": 10833,
+    "egyptian_fused_dim": 1536,
+    "random_state": 42,
+    "train_size": 4826,
+    "test_size_count": 1207,
+    "valid_anchors": 6033,
+    "total_anchors": 8139
+  },
+  "spaces": {
+    "gemma": {
+      "dim": 768,
+      "dtype": "float16",
+      "ridge_alpha": 0.1,
+      "ridge_source": "models/ridge_weights_gemma_whitened.npz",
+      "target_source": "shared/models/english_gemma_whitened_768d.npz",
+      "encoder_model": "google/embeddinggemma-300m",
+      "accuracy": {
+        "top1": 32.062966031483015,
+        "top5": 37.11681855840928,
+        "top10": 39.6023198011599
+      }
+    },
+    "glove": {
+      "dim": 300,
+      "dtype": "float16",
+      "ridge_alpha": 0.001,
+      "ridge_source": "models/ridge_weights.npz",
+      "target_source": "languages/sumerian/data/processed/glove.6B.300d.txt",
+      "accuracy": {
+        "top1": 30.985915492957744,
+        "top5": 40.76222038111019,
+        "top10": 45.15327257663629
+      }
+    }
+  }
+}

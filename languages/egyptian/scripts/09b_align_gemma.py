@@ -31,7 +31,7 @@ ENGLISH_GEMMA_PATH = _REPO_ROOT / "shared" / "models" / "english_gemma_whitened_
 ANCHOR_PATH = DATA_PROCESSED / "english_anchors_normalized.json"
 GLOVE_BASELINE_PATH = RESULTS_DIR / "alignment_results.json"
 
-RIDGE_ALPHA = 100
+RIDGE_ALPHA = 0.1
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 EXPECTED_TARGET_DIM = 768

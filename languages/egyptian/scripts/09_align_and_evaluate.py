@@ -45,7 +45,7 @@ def build_training_data(
     valid = []
 
     for anchor in anchors:
-        e_word = anchor.get("egyptian", anchor.get("sumerian", ""))
+        e_word = anchor.get("egyptian_raw", anchor.get("egyptian", ""))
         eng_word = anchor["english"]
 
         if e_word in eg_vocab and eng_word in eng_vocab:
