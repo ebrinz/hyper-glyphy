@@ -49,8 +49,8 @@ def normalize_anchors(
 
         raw_key = anchor.get("hieroglyphic", "").strip()
 
-        if egyptian not in best or confidence > best[egyptian]["confidence"]:
-            best[egyptian] = {
+        if raw_key not in best or confidence > best[raw_key]["confidence"]:
+            best[raw_key] = {
                 "egyptian": egyptian,
                 "egyptian_raw": raw_key,
                 "english": english,
