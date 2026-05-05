@@ -14,14 +14,14 @@
     "gemma": {
       "dim": 768,
       "dtype": "float16",
-      "ridge_alpha": 0.1,
+      "ridge_alpha": 1.0,
       "ridge_source": "models/ridge_weights_gemma_whitened.npz",
       "target_source": "shared/models/english_gemma_whitened_768d.npz",
       "encoder_model": "google/embeddinggemma-300m",
       "accuracy": {
-        "top1": 33.4983498349835,
-        "top5": 38.366336633663366,
-        "top10": 40.34653465346535
+        "top1": 34.57095709570957,
+        "top5": 40.759075907590756,
+        "top10": 43.72937293729373
       }
     },
     "glove": {

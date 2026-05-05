@@ -61,7 +61,14 @@ def main():
     gemma_coef = gemma_ridge["coef"]
     gemma_intercept = gemma_ridge["intercept"]
     print(f"Gemma whitened ridge coef: {gemma_coef.shape}")
-    aligned_gemma = project_all_vectors(eg_vectors, gemma_coef, gemma_intercept)
+    aligned_gemma_reduced = project_all_vectors(eg_vectors, gemma_coef, gemma_intercept)
+    if "pca_components" in gemma_ridge.files:
+        pca_components = gemma_ridge["pca_components"]
+        pca_mean = gemma_ridge["pca_mean"]
+        print(f"Lifting PCA-{pca_components.shape[0]}d -> {pca_components.shape[1]}d")
+        aligned_gemma = (aligned_gemma_reduced.astype(np.float32) @ pca_components + pca_mean).astype(np.float16)
+    else:
+        aligned_gemma = aligned_gemma_reduced
     np.savez_compressed(
         str(FINAL_OUTPUT / "egyptian_aligned_gemma_vectors.npz"),
         vectors=aligned_gemma,
