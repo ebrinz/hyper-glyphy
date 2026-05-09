@@ -35,7 +35,7 @@ def build_training_data(
     valid = []
 
     for anchor in anchors:
-        s_word = anchor["sumerian"]
+        s_word = anchor.get("akkadian") or anchor.get("sumerian")
         e_word = anchor["english"]
 
         if s_word in sum_vocab and e_word in eng_vocab:

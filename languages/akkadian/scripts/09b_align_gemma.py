@@ -20,7 +20,7 @@ if str(_ROOT) not in sys.path:
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from languages.sumerian.scripts.align_09 import (
+from languages.akkadian.scripts.align_09 import (
     build_training_data,
     train_ridge,
     evaluate_alignment,
