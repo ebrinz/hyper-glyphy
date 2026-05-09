@@ -49,40 +49,19 @@ def main():
 
     all_texts = []
 
-    etcsl_path = DATA_RAW / "etcsl_texts.json"
-    if etcsl_path.exists():
-        with open(etcsl_path) as f:
-            etcsl_lines = json.load(f)
-        compositions = {}
-        for line in etcsl_lines:
-            parts = line["line_id"].rsplit(".", 1)[0]
-            if parts not in compositions:
-                compositions[parts] = {
-                    "p_number": None,
-                    "lines": [],
-                    "translations": [],
-                    "source": "ETCSL",
-                    "composition_id": parts,
-                }
-            compositions[parts]["lines"].append(line["transliteration"])
-            if line.get("translation"):
-                compositions[parts]["translations"].append(line["translation"])
-        all_texts.extend(compositions.values())
-        print(f"ETCSL: {len(compositions)} compositions from {len(etcsl_lines)} lines")
-
-    cdli_path = DATA_RAW / "cdli_texts.json"
-    if cdli_path.exists():
-        with open(cdli_path) as f:
-            cdli_texts = json.load(f)
-        all_texts.extend(cdli_texts)
-        print(f"CDLI: {len(cdli_texts)} texts")
-
-    oracc_path = DATA_RAW / "oracc_texts.json"
-    if oracc_path.exists():
-        with open(oracc_path) as f:
-            oracc_texts = json.load(f)
-        all_texts.extend(oracc_texts)
-        print(f"ORACC: {len(oracc_texts)} texts")
+    for src_name, src_label in [
+        ("ob_literary_texts.json", "OB_literary"),
+        ("ob_letters_texts.json", "OB_letters"),
+        ("dcclt_texts.json", "DCCLT"),
+    ]:
+        path = DATA_RAW / src_name
+        if path.exists():
+            with open(path) as f:
+                texts = json.load(f)
+            all_texts.extend(texts)
+            print(f"{src_label}: {len(texts)} texts")
+        else:
+            print(f"{src_label}: missing ({path})")
 
     result, stats = deduplicate_with_stats(all_texts)
 
