@@ -1,9 +1,6 @@
 # Data (too large for git)
 languages/*/data/raw/
-languages/*/data/processed/glove.6B.*
-languages/*/data/processed/cleaned_corpus.txt
-languages/*/data/processed/merged_corpus.json
-languages/*/data/processed/english_anchors.json
+languages/*/data/processed/
 languages/*/data/dictionaries/
 
 # Models (too large for git)
