@@ -7,12 +7,9 @@ OB Akkadian aligned to whitened-EmbeddingGemma (768d, primary) and GloVe
 
 | Metric | Whitened-Gemma 768d | GloVe 300d |
 |--------|:---:|:---:|
-| Top-1  | 16.75% | 6.70% |
-| Top-5  | 25.77% | 9.54% |
-| Top-10 | 28.87% | 11.86% |
+| Top-1  | 21.66% | 9.63% |
 
-See [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md) for the
-full v1 writeup including levers for future improvement.
+See [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md) for the v1 ship, v1.1 gap-closing pass, and the identified levers remaining.
 
 ## Quick start
 
