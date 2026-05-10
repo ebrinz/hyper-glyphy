@@ -60,3 +60,15 @@ def test_skips_non_akkadian_lemmas():
     anchors = mod.extract_oracc_anchors(lemmas, min_occurrences=5)
     # Document expected behavior: extractor trusts that input is Akkadian-filtered.
     assert isinstance(anchors, list)
+
+
+def test_mimation_alternates_expand_surface_coverage():
+    """Anchors with -um mimation should register BOTH mimation and bare forms."""
+    mod = _load()
+    # 5 occurrences threshold; provide enough copies of a single mimation lemma
+    lemmas = [{"cf": "šarru", "form": "šarrum", "gw": "king", "lang": "akk"}] * 10
+    anchors = mod.extract_oracc_anchors(lemmas, min_occurrences=5)
+    forms = {a["akkadian"] for a in anchors}
+    # Both mimation form (szarrum) and its non-mimation alternate (szarru) should appear.
+    assert "szarrum" in forms
+    assert "szarru" in forms

@@ -21,7 +21,10 @@ _ROOT = Path(__file__).parent.parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from languages.akkadian.scripts.akkadian_normalize import normalize_akkadian_token  # noqa: E402
+from languages.akkadian.scripts.akkadian_normalize import (  # noqa: E402
+    normalize_akkadian_token,
+    mimation_alternates,
+)
 
 DATA_RAW = Path(__file__).parent.parent / "data" / "raw"
 DATA_PROCESSED = Path(__file__).parent.parent / "data" / "processed"
@@ -59,10 +62,12 @@ def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
             continue
         cf = normalize_akkadian_token((lemma.get("cf") or "").strip())
         form = normalize_akkadian_token((lemma.get("form") or "").strip())
-        if cf:
-            pair_counts[(cf, gw)] += 1
-        if form and form != cf:
-            pair_counts[(form, gw)] += 1
+        surfaces: set[str] = set()
+        for surface in (cf, form):
+            if surface:
+                surfaces.update(mimation_alternates(surface))
+        for surface in surfaces:
+            pair_counts[(surface, gw)] += 1
 
     anchors: list[dict] = []
     for (form_norm, gw), count in pair_counts.items():
