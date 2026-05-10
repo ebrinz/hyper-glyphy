@@ -541,6 +541,7 @@ RECOVERABILITY_TAGS = {
     "oracc_lemma_surface_recoverable":  "exact — expand anchors to ORACC surface forms",
     "morpheme_composition_recoverable": "inferred — compose vector from morphemes in vocab",
     "subword_inference_recoverable":    "inferred — use FastText OOV subword inference",
+    "logogram_unmatched":               "low — ALL-CAPS Sumerograms dropped by corpus tokenizer",
     "genuinely_missing":                "none — requires new corpus or lemma data",
 }
 
