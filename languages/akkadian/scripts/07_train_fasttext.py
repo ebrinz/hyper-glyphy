@@ -4,7 +4,7 @@ FastText Training: Train 768d skip-gram embeddings on cleaned Sumerian corpus.
 Hyperparameters (from heiroglyphy V15):
   vector_size: 768
   window: 10
-  min_count: 5
+  min_count: 2
   epochs: 10
   sg: 1 (skip-gram)
 """
@@ -35,7 +35,7 @@ def train_fasttext(
     output_dir: str,
     vector_size: int = 768,
     window: int = 10,
-    min_count: int = 5,
+    min_count: int = 2,
     epochs: int = 10,
 ) -> FastText:
     """Train FastText skip-gram model on corpus."""
@@ -76,7 +76,7 @@ def main():
         output_dir=str(MODELS_DIR),
         vector_size=768,
         window=10,
-        min_count=5,
+        min_count=2,
         epochs=10,
     )
 
