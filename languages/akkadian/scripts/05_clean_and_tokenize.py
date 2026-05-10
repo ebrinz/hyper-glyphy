@@ -148,6 +148,15 @@ def main():
 
     corpus_lines = build_corpus(texts)
 
+    # L3: append SB pretraining corpus — FastText only, not used for anchors.
+    sb_path = DATA_PROCESSED.parent / "raw" / "sb_texts.json"
+    if sb_path.exists():
+        with open(sb_path) as f:
+            sb_texts = json.load(f)
+        sb_corpus = build_corpus(sb_texts)
+        corpus_lines.extend(sb_corpus)
+        print(f"SB pretrain corpus appended: +{len(sb_corpus)} lines")
+
     output_path = DATA_PROCESSED / "cleaned_corpus.txt"
     with open(output_path, "w", encoding="utf-8") as f:
         for line in corpus_lines:
