@@ -182,8 +182,8 @@ def main():
     )
     print(f"Train: {len(X_train)}, Test: {len(X_test)}")
 
-    print("Training Ridge regression (alpha=100)...")
-    model = train_ridge(X_train, Y_train, alpha=100)
+    print("Training Ridge regression (alpha=0.001)...")
+    model = train_ridge(X_train, Y_train, alpha=0.001)  # L7: matches Sumerian's GloVe optimum
 
     Y_pred = model.predict(X_test)
 

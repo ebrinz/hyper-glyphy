@@ -47,7 +47,7 @@ RESULTS_SUFFIXES = {
 ANCHOR_PATH = DATA_PROCESSED / "english_anchors.json"
 GLOVE_BASELINE_PATH = RESULTS_DIR / "alignment_results.json"
 
-RIDGE_ALPHA = 100
+RIDGE_ALPHA = 0.01  # L7: sweep found 0.01 optimal (was 100, copied from Sumerian — wrong for our anchor pool)
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 EXPECTED_TARGET_DIM = 768
