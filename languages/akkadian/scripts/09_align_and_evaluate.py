@@ -28,20 +28,46 @@ def build_training_data(
     sum_vectors: np.ndarray,
     eng_vocab: dict[str, int],
     eng_vectors: np.ndarray,
+    fasttext_model=None,
 ) -> tuple[np.ndarray, np.ndarray, list[dict]]:
-    """Build aligned X (Sumerian) and Y (English) matrices from anchor pairs."""
+    """Build aligned X (Akkadian) and Y (English) matrices from anchor pairs.
+
+    L5: when fasttext_model is provided, OOV anchors fall back to FastText's
+    subword inference. The inferred 768d vector is zero-padded to match the
+    fused 1536d format.
+    """
     X_list = []
     Y_list = []
     valid = []
 
+    # Determine fused dimension and FastText dimension from sum_vectors
+    fused_dim = sum_vectors.shape[1] if sum_vectors.size else 1536
+    pad_dim = fused_dim - (fasttext_model.vector_size if fasttext_model else fused_dim // 2)
+    if pad_dim < 0:
+        pad_dim = 0
+
     for anchor in anchors:
         s_word = anchor.get("akkadian") or anchor.get("sumerian")
         e_word = anchor["english"]
+        if e_word not in eng_vocab:
+            continue
 
-        if s_word in sum_vocab and e_word in eng_vocab:
+        if s_word in sum_vocab:
             X_list.append(sum_vectors[sum_vocab[s_word]])
             Y_list.append(eng_vectors[eng_vocab[e_word]])
             valid.append(anchor)
+        elif fasttext_model is not None:
+            # L5: subword inference for OOV s_word.
+            try:
+                ft_vec = fasttext_model.wv.get_vector(s_word).astype(np.float32)
+            except Exception:
+                continue
+            padded = np.concatenate([ft_vec, np.zeros(pad_dim, dtype=np.float32)])
+            if padded.shape[0] != fused_dim:
+                continue  # dimension mismatch safety
+            X_list.append(padded)
+            Y_list.append(eng_vectors[eng_vocab[e_word]])
+            valid.append({**anchor, "subword_inferred": True})
 
     if not X_list:
         return np.array([]), np.array([]), []
@@ -119,8 +145,14 @@ def main():
         anchors = json.load(f)
     print(f"Loaded {len(anchors)} anchors")
 
+    # L5: load FastText model for OOV subword inference
+    from gensim.models import FastText
+    ft_path = MODELS_DIR / "fasttext_sumerian.model"
+    print(f"Loading FastText model from {ft_path} (for OOV subword inference)")
+    ft_model = FastText.load(str(ft_path))
+
     X, Y, valid_anchors = build_training_data(
-        anchors, sum_vocab, sum_vectors, eng_vocab, glove_vectors
+        anchors, sum_vocab, sum_vectors, eng_vocab, glove_vectors, fasttext_model=ft_model
     )
     print(f"Valid anchors: {len(valid_anchors)} / {len(anchors)} ({len(valid_anchors)/len(anchors)*100:.1f}%)")
 

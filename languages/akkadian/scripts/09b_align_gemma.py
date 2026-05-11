@@ -112,8 +112,14 @@ def main():
         anchors = json.load(f)
     print(f"Loaded {len(anchors)} anchors")
 
+    # L5: load FastText model for OOV subword inference
+    from gensim.models import FastText
+    ft_path = MODELS_DIR / "fasttext_sumerian.model"
+    print(f"Loading FastText model from {ft_path} (for OOV subword inference)")
+    ft_model = FastText.load(str(ft_path))
+
     X, Y, valid_anchors = build_training_data(
-        anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
+        anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors, fasttext_model=ft_model
     )
     print(
         f"Valid anchors: {len(valid_anchors)} / {len(anchors)} "
