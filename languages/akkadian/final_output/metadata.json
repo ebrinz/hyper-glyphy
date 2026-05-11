@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "methodology": "Cuneiformy-Akkadian dual-view (Akkadian 1536d -> whitened-EmbeddingGemma 768d primary, GloVe 300d secondary)",
+  "shared": {
+    "vocab_size": 45769,
+    "akkadian_fused_dim": 1536,
+    "random_state": 42,
+    "train_size": 14805,
+    "test_size_count": 2281,
+    "valid_anchors": 17086,
+    "total_anchors": 24415
+  },
+  "spaces": {
+    "gemma": {
+      "dim": 768,
+      "dtype": "float16",
+      "ridge_alpha": 0.01,
+      "ridge_source": "models/ridge_weights_gemma_whitened.npz",
+      "target_source": "models/english_gemma_whitened_768d.npz",
+      "whitening_transform": "models/gemma_whitening_transform.npz",
+      "encoder_model": "google/embeddinggemma-300m",
+      "encoder_prompt": "Retrieval-document",
+      "gloss_source": "WordNet first synset",
+      "gloss_hit_rate_pct": null,
+      "accuracy": {
+        "top1": 36.43138974134152,
+        "top5": 59.184568171854444,
+        "top10": 66.50591845681718
+      }
+    },
+    "glove": {
+      "dim": 300,
+      "dtype": "float16",
+      "ridge_alpha": 0.001,
+      "ridge_source": "models/ridge_weights.npz",
+      "target_source": "data/processed/glove.6B.300d.txt",
+      "accuracy": {
+        "top1": 27.79482683033757,
+        "top5": 43.22665497588777,
+        "top10": 47.523016220955725
+      }
+    }
+  }
+}
