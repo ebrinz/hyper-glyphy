@@ -72,3 +72,22 @@ def test_mimation_alternates_expand_surface_coverage():
     # Both mimation form (szarrum) and its non-mimation alternate (szarru) should appear.
     assert "szarrum" in forms
     assert "szarru" in forms
+
+
+def test_lemma_surface_expansion_crosses_records():
+    """An anchor's surfaces should include ALL forms attested for its lemma
+    in the corpus, even if those forms appeared with different glosses in
+    their own records."""
+    mod = _load()
+    # Same cf 'šarru' attested with two different surface forms in two records;
+    # one is 'szarrum' (with -um mimation), other is 'lugal' (logogram).
+    # The 'king' gloss should expand to register BOTH surfaces.
+    lemmas = (
+        [{"cf": "šarru", "form": "szarrum", "gw": "king", "lang": "akk"}] * 5 +
+        [{"cf": "šarru", "form": "lugal",   "gw": "king", "lang": "akk"}] * 5
+    )
+    anchors = mod.extract_oracc_anchors(lemmas, min_occurrences=5)
+    forms = {a["akkadian"] for a in anchors}
+    # Both surface forms should be present
+    assert "szarrum" in forms
+    assert "lugal" in forms

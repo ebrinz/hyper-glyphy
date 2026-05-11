@@ -47,14 +47,41 @@ def _filter_gloss(gw: str) -> bool:
     return True
 
 
+def _build_cf_surface_map(lemmas: list[dict]) -> dict[str, set[str]]:
+    """Build a global citation-form -> set of attested surface forms map.
+
+    Crosses all lemma records (regardless of gloss), so each citation form
+    gets every surface variant ever seen for it. Used to expand anchors
+    beyond the (cf, form) pair appearing in a single record.
+
+    Surface forms include mimation alternates of both cf and form.
+    """
+    cf_to_surfaces: dict[str, set[str]] = {}
+    for lemma in lemmas:
+        cf = normalize_akkadian_token((lemma.get("cf") or "").strip())
+        form = normalize_akkadian_token((lemma.get("form") or "").strip())
+        if not cf:
+            continue
+        variants: set[str] = set()
+        for s in (cf, form):
+            if s:
+                variants.update(mimation_alternates(s))
+        if cf in cf_to_surfaces:
+            cf_to_surfaces[cf].update(variants)
+        else:
+            cf_to_surfaces[cf] = variants
+    return cf_to_surfaces
+
+
 def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[dict]:
     """Extract Akkadian-English pairs from ORACC lemmatization data.
 
-    Counts (citation_form, gloss) and (surface_form, gloss) pairs and emits
-    one anchor per pair that meets the occurrence threshold.
-
-    Mirrors Sumerian's extract_epsd2_anchors.
+    L4: builds a global cf->{surfaces} map across all records, then for each
+    in-record (surface, gloss) registration, ALSO registers (other_surfaces, gloss)
+    for every surface variant of that lemma's citation form.
     """
+    cf_to_surfaces = _build_cf_surface_map(lemmas)
+
     pair_counts: Counter[tuple[str, str]] = Counter()
     for lemma in lemmas:
         gw = (lemma.get("gw") or "").strip().lower()
@@ -62,10 +89,14 @@ def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
             continue
         cf = normalize_akkadian_token((lemma.get("cf") or "").strip())
         form = normalize_akkadian_token((lemma.get("form") or "").strip())
+        # In-record surfaces (existing behavior)
         surfaces: set[str] = set()
         for surface in (cf, form):
             if surface:
                 surfaces.update(mimation_alternates(surface))
+        # L4: expand to all globally-attested surfaces for this lemma's citation form
+        if cf in cf_to_surfaces:
+            surfaces.update(cf_to_surfaces[cf])
         for surface in surfaces:
             pair_counts[(surface, gw)] += 1
 
