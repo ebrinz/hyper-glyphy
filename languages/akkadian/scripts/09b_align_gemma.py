@@ -126,8 +126,29 @@ def main():
         f"({len(valid_anchors)/len(anchors)*100:.1f}%)"
     )
 
-    X_train, X_test, Y_train, Y_test, anchors_train, anchors_test = train_test_split(
-        X, Y, valid_anchors, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    # L5-refined: partition valid anchors by subword_inferred flag. Only in-vocab
+    # anchors go into the test set; OOV-inferred anchors are training-only.
+    in_vocab_mask = np.array([not a.get("subword_inferred") for a in valid_anchors])
+    X_in = X[in_vocab_mask]
+    Y_in = Y[in_vocab_mask]
+    anchors_in = [a for a, m in zip(valid_anchors, in_vocab_mask) if m]
+    X_oov = X[~in_vocab_mask]
+    Y_oov = Y[~in_vocab_mask]
+    anchors_oov = [a for a, m in zip(valid_anchors, in_vocab_mask) if not m]
+
+    X_in_train, X_test, Y_in_train, Y_test, anchors_in_train, anchors_test = train_test_split(
+        X_in, Y_in, anchors_in, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    )
+
+    # Combine in-vocab train + all OOV anchors as training data
+    X_train = np.concatenate([X_in_train, X_oov], axis=0) if len(X_oov) else X_in_train
+    Y_train = np.concatenate([Y_in_train, Y_oov], axis=0) if len(Y_oov) else Y_in_train
+    anchors_train = anchors_in_train + anchors_oov
+
+    print(
+        f"In-vocab anchors: {len(anchors_in)} (split into "
+        f"{len(anchors_in_train)} train + {len(anchors_test)} test). "
+        f"OOV anchors (subword-inferred): {len(anchors_oov)} (added to train only)."
     )
     print(f"Train: {len(X_train)}, Test: {len(X_test)}")
 
