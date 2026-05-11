@@ -50,9 +50,7 @@ def main():
     all_texts = []
 
     for src_name, src_label in [
-        ("ob_literary_texts.json", "OB_literary"),
-        ("ob_letters_texts.json", "OB_letters"),
-        ("dcclt_texts.json", "DCCLT"),
+        ("hittite_texts.json", "TLHdig"),
     ]:
         path = DATA_RAW / src_name
         if path.exists():
