@@ -1,5 +1,118 @@
 # Akkadian Experiment Journal
 
+## 2026-05-10 — v1.2: anchor expansion + subword inference + bigger corpus (+7.36pp top-1 over v1.1)
+
+Continued the gap-closing iteration. Four more workstreams executed after v1.1
+(L2/L1b/L3 baseline). End-state: whitened-Gemma top-1 **29.02%**, top-5 49.45%,
+top-10 57.08%. Cumulative from v1 ship: 16.75% -> 29.02% (+12.27pp).
+
+### Cumulative numbers (whitened-Gemma 768d)
+
+| Stage | Top-1 | Top-5 | Top-10 | FastText vocab | Corpus tokens | Anchors | Delta |
+|-------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| v1.1 end (L3) | 21.66% | — | — | 27,799 | 1,441k | 4,481 | — |
+| + L4 lemma-surface expansion | 25.39% | — | — | 27,799 | 1,441k | 24,415 | +3.73pp |
+| + L5 subword inference (train-only) | 26.58% | 44.81% | 51.97% | 27,799 | 1,441k | 24,415 | +1.19pp |
+| + L6a SB corpus expansion #2 | 28.32% | 49.15% | 56.16% | 45,769 | 3,000k | 24,415 | +1.74pp |
+| + L6b DCCLT bridge (FALSIFIED) | 24.77% | 42.93% | 49.98% | 45,769 | 3,000k | 25,962 | -3.55pp |
+| Final (L6b reverted) | **29.02%** | **49.45%** | **57.08%** | **45,769** | **3,000k** | **24,415** | **+0.70pp** |
+
+### Lever-by-lever read
+
+**L4 (global lemma-surface expansion) — big win, +3.73pp.** Built a global
+`citation_form -> {surface_forms}` map across ALL ORACC lemma records, then
+expanded each emitted anchor to include every surface variant of its
+citation form. The previous per-record `(cf, form)` pairing missed surface
+variants that appeared in OTHER lemma records with different glosses.
+Anchor count grew from 4,481 to 24,415 (5.5x). The `oracc_lemma_surface_recoverable`
+diagnostic bucket fell from 34.9% to 5.14%.
+
+**L5-refined (subword inference, training-only) — +1.19pp.** Initial L5
+implementation passed OOV-inferred anchors through `train_test_split`,
+landing some in the test set; their noisy inferred vectors regressed top-1
+by -2.86pp. The fix partitions valid anchors by the `subword_inferred` flag:
+OOV anchors are training-only, test set drawn exclusively from in-vocab
+anchors. With this fix the eval is fair-comparable to the pre-L5 baseline,
+and the extra training signal from 6,198 OOV anchors lifts top-1 by +1.19pp.
+
+**L6a (massive SB corpus expansion) — +1.74pp.** Expanded the SB-pretrain
+project list from 11 to 62 ORACC projects (RINAP volumes 2-5p1, SAA letters
+01-21, RIBO Babylonia 2-7, CMAWRO, ASBP, ADSD, ATAE site corpora, CAMS
+sub-projects, etc.). Corpus 1.44M -> 3M tokens, FastText vocab 27,799 ->
+45,769. Confirms diminishing returns on corpus: doubling 712k->1.44M gave
++4.73pp (L3), doubling again 1.44M->3M gave +1.74pp.
+
+**L6b (DCCLT bridge bootstrapping) — FALSIFIED, -3.55pp.** Used Sumerian's
+52% top-1 alignment as a Rosetta stone: for each Sumerian-Akkadian DCCLT
+pair, took Sumerian's top-1 English neighbor (gated by cosine >= 0.5) and
+emitted (akkadian, english) as a bridge anchor. Produced 1,573 new anchors
+(8,176 rejected by cosine threshold, 3,039 by Sumerian-vocab miss).
+Hypothesis: the high-cosine neighbors would be reliable enough to add net
+training signal. Reality: even at cosine 0.5+, the bridge labels are too
+noisy. Net regression -3.55pp. Reverted to ORACC-only anchors. Bridge
+script committed as experimental infrastructure for future investigation
+(stricter cosine threshold, lemma-uncovered-only mode, score-aware Ridge).
+
+### Key lessons
+
+1. **Vector quality > anchor quantity.** L1b recovered 413 low-frequency
+   anchors for +0.05pp; L4 added 19,934 anchors with proper surface
+   expansion for +3.73pp. The variable that matters is whether the
+   recovered/added anchors have *usable* vectors.
+
+2. **Corpus expansion is the dominant lever, with diminishing returns.**
+   L3 + L6a together moved top-1 by +6.47pp via FastText corpus alone.
+   Top-10 (57.08%) now approaches Sumerian's 65.99% — the top-1 gap
+   reflects the harder problem of correct nearest-neighbor selection,
+   not insufficient corpus signal.
+
+3. **Eval-set partition matters more than expected.** L5's initial
+   regression was an evaluation artifact, not a real signal degradation.
+   When OOV anchors entered the test set, per-anchor accuracy on the
+   noisy inferred vectors dragged down the mean. The partition fix
+   (OOV anchors training-only, test drawn from in-vocab) recovered the
+   real positive signal.
+
+4. **Transitive bootstrapping from another slot's alignment is harder
+   than it looks.** L6b's hypothesis seemed strong on paper — 52%
+   accurate oracle + filtering by cosine should give a clean subset.
+   But ridge-aligned spaces don't preserve per-anchor confidence
+   monotonically: high cosine in one alignment doesn't guarantee
+   semantic accuracy. Future bridge experiments need a fundamentally
+   different signal (e.g., scored DCCLT entries, ancient bilingual
+   glosses where both sides have explicit English).
+
+### Remaining gap to Sumerian
+
+Top-1 29.02% vs Sumerian 52.13% — gap of 23.11pp.
+Top-10 57.08% vs Sumerian 65.99% — gap of 8.91pp.
+
+The top-10 gap is now small. The top-1 gap reflects an alignment
+*precision* problem, not coverage. Remaining levers:
+
+- **Per-anchor Ridge alpha tuning.** Sumerian's `ridge_alpha_sweep.py`
+  experimented with this. Possible +1-3pp.
+- **WordNet-augmented gloss expansion.** Use WordNet to expand single-word
+  English glosses into rich definitions, then encode with Gemma. Sumerian's
+  v2 used this. Possible +3-5pp.
+- **Manually-curated high-confidence anchor seed.** A small set (~500) of
+  hand-verified Akkadian-English pairs from CAD volume 1, used to anchor
+  the Ridge with very high confidence. Possible +2-5pp.
+
+### Files added/modified
+
+- `scripts/01b_scrape_oracc_sb.py` — expanded to 62 projects (L6a)
+- `scripts/06_extract_anchors.py` — global surface-map expansion (L4)
+- `scripts/06b_bridge_anchors.py` — DCCLT bridge (L6b, experimental)
+- `scripts/09_align_and_evaluate.py` — subword inference + train/test
+  partition (L5)
+- `scripts/09b_align_gemma.py` — same (L5)
+
+Commits: `c5471f2` (L4), `fd9da0e`+`5ec3594` (L5+refine), `f3599c1` (L6a),
+`44944a6` (L6b infra).
+
+---
+
 ## 2026-05-10 — v1.1: three-lever gap-closing pass (+4.91pp top-1)
 
 Three improvement workstreams executed in sequence after the v1 ship, targeting

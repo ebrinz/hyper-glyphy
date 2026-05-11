@@ -3,13 +3,18 @@
 OB Akkadian aligned to whitened-EmbeddingGemma (768d, primary) and GloVe
 (300d, secondary). Pipeline structure mirrors `languages/sumerian/` 1:1.
 
-## Current results
+## Current results (v1.2)
 
 | Metric | Whitened-Gemma 768d | GloVe 300d |
 |--------|:---:|:---:|
-| Top-1  | 21.66% | 9.63% |
+| Top-1  | 29.02% | 14.56% |
+| Top-5  | 49.45% | 23.02% |
+| Top-10 | 57.08% | 26.04% |
 
-See [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md) for the v1 ship, v1.1 gap-closing pass, and the identified levers remaining.
+Corpus 3.0M tokens, FastText vocab 45,769, ORACC anchor pool 24,415. See
+[`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md) for the v1 ship,
+v1.1 three-lever pass, v1.2 four-lever pass (incl. one falsified hypothesis),
+and remaining levers to approach Sumerian's 52% top-1.
 
 ## Quick start
 
