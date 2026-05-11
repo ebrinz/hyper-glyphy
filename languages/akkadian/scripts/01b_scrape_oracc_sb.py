@@ -21,17 +21,78 @@ DATA_RAW = Path(__file__).parent.parent / "data" / "raw"
 # Standard Babylonian / canonical descendant projects on ORACC.
 # Vast amounts of Akkadian here, all linguistically descended from OB.
 SB_PROJECTS = [
-    "rinap/rinap1",   # Royal Inscriptions of the Neo-Assyrian Period vol 1 (Tiglath-Pileser III)
-    "rinap/rinap3",   # Sennacherib
-    "rinap/rinap4",   # Esarhaddon
-    "rinap/rinap5",   # Ashurbanipal
-    "saao/saa01",     # SAA letters vol 1
-    "saao/saa17",     # SAA letters vol 17 (Sennacherib correspondence)
+    # already had (some 404'd):
+    "rinap/rinap1",
+    "rinap/rinap3",
+    "rinap/rinap4",
+    "rinap/rinap5",
+    "saao/saa01",
+    "saao/saa17",
     "saao/saa18",
     "saao/saa19",
-    "cams/akklove",   # Akkadian Love Literature
-    "cams/anzu",      # Anzu epic
-    "cams/gkab",      # Geography of Knowledge in Assyria and Babylonia
+    "cams/akklove",
+    "cams/anzu",
+    "cams/gkab",
+    # NEW: more RINAP/Royal Inscriptions
+    "rinap/rinap2",
+    "rinap/rinap5p1",
+    # NEW: more SAA letters (huge corpus)
+    "saao/saa02",
+    "saao/saa03",
+    "saao/saa04",
+    "saao/saa05",
+    "saao/saa06",
+    "saao/saa07",
+    "saao/saa08",
+    "saao/saa09",
+    "saao/saa10",
+    "saao/saa11",
+    "saao/saa12",
+    "saao/saa13",
+    "saao/saa14",
+    "saao/saa15",
+    "saao/saa16",
+    "saao/saa20",
+    "saao/saa21",
+    # NEW: Royal Inscriptions of Babylonia
+    "ribo/babylon2",
+    "ribo/babylon3",
+    "ribo/babylon4",
+    "ribo/babylon5",
+    "ribo/babylon6",
+    "ribo/babylon7",
+    # NEW: Anti-witchcraft rituals
+    "cmawro/cmawr1",
+    "cmawro/cmawr2",
+    "cmawro/maqlu",
+    # NEW: Ashurbanipal library
+    "asbp/ninmed",
+    "asbp/rlasb",
+    # NEW: Astronomical Diaries (late Babylonian)
+    "adsd/adart1",
+    "adsd/adart2",
+    "adsd/adart3",
+    # NEW: Archive of Texts of Assyrian Empire (many sites)
+    "atae/assur",
+    "atae/kalhu",
+    "atae/nineveh",
+    "atae/tushhan",
+    # NEW: misc Akkadian projects
+    "borsippa",
+    "suhu",
+    "btmao",
+    "btto",
+    "iraq/iraq85",
+    "glass",
+    "amgg",
+    "ario",
+    "contrib/amarna",
+    "contrib/lambert",
+    # NEW: more CAMS
+    "cams/barutu",
+    "cams/ludlul",
+    "cams/selbi",
+    "cams/tlab",
 ]
 
 
