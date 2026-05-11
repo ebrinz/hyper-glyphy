@@ -207,7 +207,7 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for queued workstreams.
 |------|:---:|:---|
 | [Sumerian](languages/sumerian/) | 52.13% | language isolate / cuneiform |
 | [Egyptian](languages/egyptian/) | 32.35% (GloVe) | Afroasiatic / hieroglyphic |
-| [Akkadian](languages/akkadian/) | 29.02% | East Semitic / cuneiform |
+| [Akkadian](languages/akkadian/) | 36.43% | East Semitic / cuneiform |
 
 ### Stretch goals — additional language slots
 

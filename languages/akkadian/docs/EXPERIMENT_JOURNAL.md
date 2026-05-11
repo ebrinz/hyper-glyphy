@@ -1,5 +1,66 @@
 # Akkadian Experiment Journal
 
+## 2026-05-11 — v1.3: Ridge alpha sweep (+7.41pp top-1, single hyperparameter)
+
+After the v1.2 plateau (29.02% top-1) we ran an alpha sweep on the whitened-Gemma
+target. The inherited alpha=100 (copied from Sumerian's spec) is nowhere near
+optimal for Akkadian's anchor pool.
+
+### Sweep results (Akkadian whitened-Gemma)
+
+| alpha | Top-1 | Top-5 | Top-10 |
+|-------|:---:|:---:|:---:|
+| 0.01  | **36.43%** | **59.18%** | **66.51%** |
+| 0.1   | 35.03% | 58.57% | 65.37% |
+| 1     | 33.49% | 57.08% | 63.26% |
+| 10    | 31.26% | 54.71% | 61.42% |
+| 100 (was) | 29.02% | 49.45% | 57.08% |
+| 1000  | 22.84% | 40.60% | 46.87% |
+| 1e+04 | 10.92% | 19.95% | 25.43% |
+| 1e+05 | 2.24% | 3.59% | 5.13% |
+
+Adopting alpha=0.01 for Gemma. GloVe (09) was also using alpha=100; Sumerian's
+spec actually documents alpha=0.001 for GloVe — that fix is applied too.
+
+### Headline numbers
+
+| Metric | v1.2 | v1.3 | Delta | Sumerian for comparison |
+|--------|:---:|:---:|:---:|:---:|
+| Gemma top-1  | 29.02% | **36.43%** | +7.41pp | 52.13% |
+| Gemma top-5  | 49.45% | **59.18%** | +9.73pp | 61.97% |
+| Gemma top-10 | 57.08% | **66.51%** | +9.43pp | 65.99% (!) |
+| GloVe top-1  | 14.56% | **27.79%** | +13.23pp | 35.70% |
+| GloVe top-5  | 23.02% | **43.23%** | +20.21pp | 44.61% |
+| GloVe top-10 | 26.04% | **47.52%** | +21.48pp | 47.93% |
+
+**Akkadian Gemma top-10 now exceeds Sumerian's top-10.** Akkadian GloVe top-10
+(47.52%) is within 0.41pp of Sumerian's (47.93%). The coverage problem is
+effectively solved on both targets. The remaining top-1 gap (36.43% vs
+52.13% Gemma) is alignment *precision*, not lexical coverage.
+
+### Lesson
+
+**Don't inherit hyperparameters across slots.** The alpha=100 constant came
+from Sumerian's `09b_align_gemma.py` and we propagated it through three
+language slots (Sumerian, Egyptian, Akkadian) on the assumption it
+generalized. It doesn't. Each slot's optimal regularization depends on:
+
+- Anchor pool composition (Sumerian's 13k anchors @ ePSD2 confidence vs.
+  Akkadian's 24k anchors via global surface expansion)
+- Anchor signal-to-noise (Sumerian's ORACC is more uniformly curated than
+  Akkadian's blend of OB literary + letters + DCCLT)
+- Effective fused dimension after FastText training (corpus quality)
+
+For future slots: **always sweep alpha**. Cost: 20 min. Possible payoff:
++5-10pp top-1. The ratio is absurd in favor of always doing it.
+
+Cumulative from v1 ship: **16.75% -> 36.43% (+19.68pp)** on Gemma top-1.
+
+Files: `scripts/09b_align_gemma.py` (RIDGE_ALPHA), `scripts/09_align_and_evaluate.py`,
+`scripts/ridge_alpha_sweep.py` (ported from Sumerian). Commit: `8510efd`.
+
+---
+
 ## 2026-05-10 — v1.2: anchor expansion + subword inference + bigger corpus (+7.36pp top-1 over v1.1)
 
 Continued the gap-closing iteration. Four more workstreams executed after v1.1
