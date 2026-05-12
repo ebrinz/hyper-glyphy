@@ -39,3 +39,4 @@ env/
 .DS_Store
 Thumbs.db
 languages/*/final_output/*aligned_vocab.json
+languages/*/data/dictionaries/

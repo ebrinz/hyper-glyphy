@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "methodology": "Cuneiformy-Hittite dual-view (Hittite 1536d -> whitened-EmbeddingGemma 768d primary, GloVe 300d secondary)",
+  "shared": {
+    "vocab_size": 31412,
+    "hittite_fused_dim": 1536,
+    "random_state": 42,
+    "train_size": 10236,
+    "test_size_count": 1514,
+    "valid_anchors": 11750,
+    "total_anchors": 11750
+  },
+  "spaces": {
+    "gemma": {
+      "dim": 768,
+      "dtype": "float16",
+      "ridge_alpha": 0.01,
+      "ridge_source": "models/ridge_weights_gemma_whitened.npz",
+      "target_source": "models/english_gemma_whitened_768d.npz",
+      "whitening_transform": "models/gemma_whitening_transform.npz",
+      "encoder_model": "google/embeddinggemma-300m",
+      "encoder_prompt": "Retrieval-document",
+      "gloss_source": "WordNet first synset",
+      "gloss_hit_rate_pct": null,
+      "accuracy": {
+        "top1": 40.62087186261559,
+        "top5": 50.99075297225891,
+        "top10": 55.01981505944518
+      }
+    },
+    "glove": {
+      "dim": 300,
+      "dtype": "float16",
+      "ridge_alpha": 0.001,
+      "ridge_source": "models/ridge_weights.npz",
+      "target_source": "data/processed/glove.6B.300d.txt",
+      "accuracy": {
+        "top1": 35.402906208718626,
+        "top5": 41.87582562747688,
+        "top10": 43.196829590488775
+      }
+    }
+  }
+}

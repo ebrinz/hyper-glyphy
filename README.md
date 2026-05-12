@@ -208,6 +208,7 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for queued workstreams.
 | [Sumerian](languages/sumerian/) | 52.13% | language isolate / cuneiform |
 | [Egyptian](languages/egyptian/) | 32.35% (GloVe) | Afroasiatic / hieroglyphic |
 | [Akkadian](languages/akkadian/) | 36.43% | East Semitic / cuneiform |
+| [Hittite](languages/hittite/) | 40.62% | Indo-European (Anatolian) / cuneiform |
 
 ### Stretch goals — additional language slots
 
@@ -216,7 +217,6 @@ using the same dual-target Ridge pipeline (GloVe 300d + whitened-Gemma 768d):
 
 | Slot | Period | Family / Script | Why it's interesting |
 |------|--------|-----------------|----------------------|
-| **Hittite** | ~1650–1180 BCE | Indo-European (Anatolian) / cuneiform | Oldest attested IE language; complements Vedic for a deep IE diachronic axis. ORACC has lemmatized content (hbtin and related). |
 | **Greek** | Archaic → Koine, ~800 BCE – 600 CE | Indo-European / alphabetic | Massive corpus (Perseus, TLG); a high-quality calibration slot where modern semantic encoders already perform well — sanity-check for the pipeline. |
 | **Ugaritic** | ~1400–1200 BCE | NW Semitic / alphabetic cuneiform | Tiny corpus but liturgically dense (Baal Cycle, KTU); sister branch to Akkadian, enables NW↔East Semitic alignment comparison. |
 | **Elamite** | ~2300 BCE – 5th c. BCE | language isolate / cuneiform (partially deciphered) | The "embedding archaeology" case — most ambitious slot. Even partial alignment would be a research finding. |
