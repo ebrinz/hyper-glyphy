@@ -120,3 +120,25 @@ def test_extract_epsd2_anchors_applies_full_normalization():
     # Regression: the unnormalized forms must NOT appear.
     assert "{tug₂}mug" not in sumerian_keys
     assert "za₃-sze₃-la₂" not in sumerian_keys
+
+
+def test_epsd2_anchors_carry_lemmas():
+    from languages.sumerian.scripts.anchors_06 import extract_epsd2_anchors
+
+    lemmas = [{"cf": "lugal", "form": "lugal-e", "gw": "king"}] * 5
+    anchors = extract_epsd2_anchors(lemmas, min_occurrences=5)
+    by_surface = {a["sumerian"]: a for a in anchors}
+    # Both the cf anchor and the form anchor attribute to the cf.
+    # Note: normalization strips hyphens, so 'lugal-e' becomes 'lugale'
+    assert by_surface["lugal"]["lemmas"] == ["lugal"]
+    assert by_surface["lugale"]["lemmas"] == ["lugal"]
+
+
+def test_cooccurrence_anchors_carry_singleton_lemmas():
+    from languages.sumerian.scripts.anchors_06 import extract_cooccurrence_anchors
+
+    lines = [{"transliteration": "lugal kur", "translation": "the king of the mountain"}] * 4
+    anchors = extract_cooccurrence_anchors(lines, min_cooccurrences=3, min_confidence=0.3)
+    assert anchors
+    for a in anchors:
+        assert a["lemmas"] == [a["sumerian"]]

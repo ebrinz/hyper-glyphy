@@ -30,6 +30,7 @@ def extract_epsd2_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
     Deduplicates by (cf, gw) and filters by occurrence count.
     """
     pair_counts = Counter()
+    pair_lemmas: dict[tuple[str, str], set[str]] = {}
     for lemma in lemmas:
         gw = lemma.get("gw", "").strip().lower()
         if not gw:
@@ -37,10 +38,13 @@ def extract_epsd2_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
         # Count both citation form and surface form as potential anchors
         cf = normalize_sumerian_token(lemma.get("cf", "").strip())
         form = normalize_sumerian_token(lemma.get("form", "").strip())
+        lemma_key = cf or form
         if cf:
             pair_counts[(cf, gw)] += 1
+            pair_lemmas.setdefault((cf, gw), set()).add(lemma_key)
         if form and form != cf:
             pair_counts[(form, gw)] += 1
+            pair_lemmas.setdefault((form, gw), set()).add(lemma_key)
 
     # Junk English values to filter out
     junk_english = {
@@ -68,6 +72,7 @@ def extract_epsd2_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
                 "confidence": round(confidence, 4),
                 "frequency": count,
                 "source": "ePSD2",
+                "lemmas": sorted(pair_lemmas[(cf, gw)]),
             })
 
     return anchors
@@ -121,6 +126,7 @@ def extract_cooccurrence_anchors(
                 "confidence": round(confidence, 4),
                 "frequency": total,
                 "source": "ETCSL",
+                "lemmas": [sw],
             })
 
     return anchors
