@@ -105,9 +105,9 @@ def extract_cooccurrence_anchors(
         sum_words = set(re.findall(r"[a-zA-Z\u0161\u0160\u1E2B\u1E2A\u1E6D\u1E6C\u1E63\u1E62\u011D\u011C]+\d*", trans.lower()))
         eng_words = set(re.findall(r"[a-z]+", transl.lower())) - stop_words
 
-        for sw in sum_words:
+        for sw in sorted(sum_words):
             sum_counts[sw] += 1
-            for ew in eng_words:
+            for ew in sorted(eng_words):
                 cooc[sw][ew] += 1
 
     anchors = []
