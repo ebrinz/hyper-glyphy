@@ -183,6 +183,7 @@ def extract_german_anchors(
     translations = translate_german_glosses(surviving_glosses, eng_vectors, eng_vocab)
 
     pair_counts: Counter[tuple[str, str]] = Counter()
+    pair_lemmas: dict[tuple[str, str], set[str]] = {}
     for lemma in lemmas:
         gw = (lemma.get("gw") or "").strip()
         if gw not in translations:
@@ -192,6 +193,7 @@ def extract_german_anchors(
             continue
         cf = normalize_hittite_token((lemma.get("cf") or "").strip())
         form = normalize_hittite_token((lemma.get("form") or "").strip())
+        lemma_key = cf or form
         surfaces: set[str] = set()
         if cf:
             surfaces.add(cf)
@@ -199,6 +201,7 @@ def extract_german_anchors(
             surfaces.add(form)
         for surface in surfaces:
             pair_counts[(surface, english)] += 1
+            pair_lemmas.setdefault((surface, english), set()).add(lemma_key)
 
     anchors: list[dict] = []
     for (form_norm, eng), count in pair_counts.items():
@@ -211,6 +214,7 @@ def extract_german_anchors(
             "confidence": round(confidence, 4),
             "frequency": count,
             "source": "TLHdig_de",
+            "lemmas": sorted(pair_lemmas[(form_norm, eng)]),
         })
     return sorted(anchors, key=lambda a: a["confidence"], reverse=True)
 
@@ -255,6 +259,7 @@ def extract_heterogram_anchors(
                             "source": "heterogram_sux",
                             "bridge_cosine": round(cosine, 4),
                             "bridge_source_word": key,
+                            "lemmas": [normalize_hittite_token(sumerogram)],
                         })
                     break
 
@@ -278,6 +283,7 @@ def extract_heterogram_anchors(
                         "source": "heterogram_akk",
                         "bridge_cosine": round(cosine, 4),
                         "bridge_source_word": akkadogram,
+                        "lemmas": [akk_norm],
                     })
 
     return anchors
