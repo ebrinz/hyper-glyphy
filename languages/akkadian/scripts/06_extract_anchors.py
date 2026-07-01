@@ -83,12 +83,14 @@ def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
     cf_to_surfaces = _build_cf_surface_map(lemmas)
 
     pair_counts: Counter[tuple[str, str]] = Counter()
+    pair_lemmas: dict[tuple[str, str], set[str]] = {}
     for lemma in lemmas:
         gw = (lemma.get("gw") or "").strip().lower()
         if not _filter_gloss(gw):
             continue
         cf = normalize_akkadian_token((lemma.get("cf") or "").strip())
         form = normalize_akkadian_token((lemma.get("form") or "").strip())
+        lemma_key = cf or form
         # In-record surfaces (existing behavior)
         surfaces: set[str] = set()
         for surface in (cf, form):
@@ -99,6 +101,7 @@ def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
             surfaces.update(cf_to_surfaces[cf])
         for surface in surfaces:
             pair_counts[(surface, gw)] += 1
+            pair_lemmas.setdefault((surface, gw), set()).add(lemma_key)
 
     anchors: list[dict] = []
     for (form_norm, gw), count in pair_counts.items():
@@ -111,6 +114,7 @@ def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
             "confidence": round(confidence, 4),
             "frequency": count,
             "source": "ORACC",
+            "lemmas": sorted(pair_lemmas[(form_norm, gw)]),
         })
     return sorted(anchors, key=lambda a: a["confidence"], reverse=True)
 

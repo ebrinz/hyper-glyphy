@@ -91,3 +91,23 @@ def test_lemma_surface_expansion_crosses_records():
     # Both surface forms should be present
     assert "szarrum" in forms
     assert "lugal" in forms
+
+
+def test_anchors_carry_contributing_lemmas():
+    mod = _load()
+
+    lemmas = [
+        {"cf": "šarrum", "form": "šarri", "gw": "king"},
+    ] * 5 + [
+        # Same surface form under a second citation form: both cfs recorded.
+        {"cf": "šarratum", "form": "šarri", "gw": "king"},
+    ] * 5
+    anchors = mod.extract_oracc_anchors(lemmas, min_occurrences=5)
+    by_surface = {a["akkadian"]: a for a in anchors}
+    # The normalizer transforms šarri -> szarri, šarrum -> szarrum, šarratum -> szarratum
+    # Pin the actual normalized surfaces used
+    assert "szarri" in by_surface
+    assert "lemmas" in by_surface["szarri"]
+    assert set(by_surface["szarri"]["lemmas"]) >= {"szarrum", "szarratum"}
+    for a in anchors:
+        assert a["lemmas"] == sorted(set(a["lemmas"]))
