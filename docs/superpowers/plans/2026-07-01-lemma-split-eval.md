@@ -369,9 +369,13 @@ Expected: `OK: ... anchors identical modulo lemmas field`. If content drifted, S
 
 ```bash
 git add languages/akkadian/scripts/06_extract_anchors.py \
-        languages/akkadian/tests/test_06_anchors.py \
-        languages/akkadian/data/processed/english_anchors.json
+        languages/akkadian/tests/test_06_anchors.py
 git commit -m "feat(akkadian): anchors carry contributing lemmas (cf) for group split"
+```
+
+(Data under `languages/*/data/` is gitignored — regenerated JSONs stay untracked.)
+
+```bash
 ```
 
 ---
@@ -486,8 +490,7 @@ Expected: `OK: 13100 anchors identical modulo lemmas field`.
 
 ```bash
 git add languages/sumerian/scripts/06_extract_anchors.py \
-        languages/sumerian/tests/test_06_anchors.py \
-        languages/sumerian/data/processed/english_anchors.json
+        languages/sumerian/tests/test_06_anchors.py
 git commit -m "feat(sumerian): anchors carry contributing lemmas for group split"
 ```
 
@@ -621,8 +624,7 @@ Same pattern as Task 2 Step 5, with:
 
 ```bash
 git add languages/hittite/scripts/06_extract_anchors.py \
-        languages/hittite/tests/test_06_anchors.py \
-        languages/hittite/data/processed/english_anchors.json
+        languages/hittite/tests/test_06_anchors.py
 git commit -m "feat(hittite): anchors carry contributing lemmas for group split"
 ```
 
@@ -716,8 +718,7 @@ Same pattern as Task 2 Step 5, with:
 
 ```bash
 git add languages/greek/scripts/06_extract_anchors.py \
-        languages/greek/tests/test_06_anchors.py \
-        languages/greek/data/processed/english_anchors.json
+        languages/greek/tests/test_06_anchors.py
 git commit -m "feat(greek): anchors carry contributing lemmas for group split"
 ```
 
