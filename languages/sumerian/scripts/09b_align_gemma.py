@@ -18,12 +18,14 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import numpy as np
-from sklearn.model_selection import train_test_split
+
+from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
 
 from languages.sumerian.scripts.align_09 import (
     build_training_data,
     train_ridge,
     evaluate_alignment,
+    select_alpha,
 )
 
 ROOT = Path(__file__).parent.parent
@@ -47,9 +49,8 @@ RESULTS_SUFFIXES = {
 ANCHOR_PATH = DATA_PROCESSED / "english_anchors.json"
 GLOVE_BASELINE_PATH = RESULTS_DIR / "alignment_results.json"
 
-RIDGE_ALPHA = 100
-TEST_SIZE = 0.2
-RANDOM_STATE = 42
+SURFACE_KEY = "sumerian"
+ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
 EXPECTED_TARGET_DIM = 768
 
 
@@ -112,24 +113,43 @@ def main():
         anchors = json.load(f)
     print(f"Loaded {len(anchors)} anchors")
 
-    X, Y, valid_anchors = build_training_data(
-        anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
+    train_anchors, val_anchors, test_anchors = group_split(
+        anchors, surface_key=SURFACE_KEY
     )
     print(
-        f"Valid anchors: {len(valid_anchors)} / {len(anchors)} "
-        f"({len(valid_anchors)/len(anchors)*100:.1f}%)"
+        f"Group split (seed={SEED}): {len(train_anchors)} train / "
+        f"{len(val_anchors)} val / {len(test_anchors)} test raw anchors"
     )
 
-    X_train, X_test, Y_train, Y_test, anchors_train, anchors_test = train_test_split(
-        X, Y, valid_anchors, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    X_train, Y_train, train_valid = build_training_data(
+        train_anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
     )
-    print(f"Train: {len(X_train)}, Test: {len(X_test)}")
+    X_val, Y_val, val_valid = build_training_data(
+        val_anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
+    )
+    X_test, Y_test, test_valid = build_training_data(
+        test_anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
+    )
+    n_valid = len(train_valid) + len(val_valid) + len(test_valid)
+    print(
+        f"Valid anchors: {n_valid} / {len(anchors)} — "
+        f"{len(train_valid)} train / {len(val_valid)} val / {len(test_valid)} test"
+    )
 
-    print(f"Training Ridge (alpha={RIDGE_ALPHA})...")
-    model = train_ridge(X_train, Y_train, alpha=RIDGE_ALPHA)
+    print("Selecting alpha on validation...")
+    val_english = [a["english"] for a in val_valid]
+    best_alpha, sweep = select_alpha(
+        X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors, ALPHAS
+    )
+    print(f"Selected alpha={best_alpha}")
+
+    X_fit = np.concatenate([X_train, X_val], axis=0)
+    Y_fit = np.concatenate([Y_train, Y_val], axis=0)
+    print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
+    model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
     Y_pred = model.predict(X_test)
-    test_english = [a["english"] for a in anchors_test]
+    test_english = [a["english"] for a in test_valid]
     results = evaluate_alignment(Y_pred, test_english, eng_vocab_list, eng_vectors)
 
     baseline = None
@@ -160,12 +180,11 @@ def main():
         ),
         "config": {
             "alignment": "Ridge",
-            "alpha": RIDGE_ALPHA,
-            "test_size": TEST_SIZE,
-            "random_state": RANDOM_STATE,
-            "train_size": len(X_train),
+            "alpha": best_alpha,
+            "alpha_sweep_val": sweep,
+            "train_size": len(X_fit),
             "test_size_count": len(X_test),
-            "valid_anchors": len(valid_anchors),
+            "valid_anchors": n_valid,
             "total_anchors": len(anchors),
             "sumerian_vocab": len(sum_vocab),
             "english_vocab": len(eng_vocab),
@@ -174,6 +193,16 @@ def main():
             "gemma_model": gemma_model,
             "gloss_hit_rate": gloss_hit_rate,
             "mode": mode_label,
+            "split": {
+                "method": "lemma-group",
+                "seed": SEED,
+                "val_size": VAL_SIZE,
+                "test_size": TEST_SIZE,
+                "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                        "test": len(test_anchors)},
+                "valid": {"train": len(train_valid), "val": len(val_valid),
+                          "test": len(test_valid)},
+            },
         },
     }
 
