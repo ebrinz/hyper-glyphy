@@ -93,6 +93,7 @@ def extract_anchors(
 ) -> list[dict]:
     """Build (greek, english) anchors via Diorisis-LSJ join."""
     pair_counts: Counter[tuple[str, str]] = Counter()
+    pair_lemmas: dict[tuple[str, str], set[str]] = {}
     lsj_hits = 0
     lsj_misses = 0
     gloss_no_eng = 0
@@ -130,6 +131,7 @@ def extract_anchors(
             surfaces.add(form_norm)
         for surface in surfaces:
             pair_counts[(surface, english)] += 1
+            pair_lemmas.setdefault((surface, english), set()).add(cf_norm)
 
     print(f"  LSJ join: {lsj_hits} hits, {lsj_misses} misses (cf not in LSJ)")
     print(f"  Glosses with no in-vocab English: {gloss_no_eng}")
@@ -145,6 +147,7 @@ def extract_anchors(
             "confidence": round(confidence, 4),
             "frequency": count,
             "source": "Diorisis+LSJ",
+            "lemmas": sorted(pair_lemmas[(greek_form, eng)]),
         })
     return sorted(anchors, key=lambda a: a["confidence"], reverse=True)
 
