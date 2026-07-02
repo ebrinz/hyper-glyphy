@@ -7,7 +7,6 @@ inverse_transform. This yields +1.2pp top-1 over direct 768d Ridge.
 
 Reuses helpers from align_09 for training and evaluation.
 """
-import argparse
 import json
 import sys
 from pathlib import Path
@@ -18,13 +17,15 @@ if str(_REPO_ROOT) not in sys.path:
 
 import numpy as np
 from sklearn.decomposition import PCA
-from sklearn.model_selection import train_test_split
 
 from languages.egyptian.scripts.align_09 import (
     build_training_data,
     train_ridge,
     evaluate_alignment,
+    select_alpha,
 )
+
+from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
 
 _LANG_ROOT = Path(__file__).parent.parent
 MODELS_DIR = _LANG_ROOT / "models"
@@ -35,25 +36,15 @@ ENGLISH_GEMMA_PATH = _REPO_ROOT / "shared" / "models" / "english_gemma_whitened_
 ANCHOR_PATH = DATA_PROCESSED / "english_anchors_normalized.json"
 GLOVE_BASELINE_PATH = RESULTS_DIR / "alignment_results.json"
 
-RIDGE_ALPHA = 1.0
 PCA_COMPONENTS = 256
 PCA_FIT_SAMPLE = 50000
-TEST_SIZE = 0.2
-RANDOM_STATE = 42
 EXPECTED_TARGET_DIM = 768
 
-SWEEP_ALPHAS = [0.01, 0.1, 1, 10, 100, 1000]
+SURFACE_KEY = "egyptian_raw"
+ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PCA-Ridge alignment: Egyptian FastText -> whitened EmbeddingGemma 768d.")
-    parser.add_argument(
-        "--sweep",
-        action="store_true",
-        help="Run alpha sweep over SWEEP_ALPHAS before final training.",
-    )
-    args = parser.parse_args()
-
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     if not ENGLISH_GEMMA_PATH.exists():
@@ -91,46 +82,46 @@ def main():
         anchors = json.load(f)
     print(f"Loaded {len(anchors)} anchors")
 
-    X, Y_full, valid_anchors = build_training_data(
-        anchors, eg_vocab, eg_vectors, eng_vocab, eng_vectors
+    train_anchors, val_anchors, test_anchors = group_split(
+        anchors, surface_key=SURFACE_KEY
     )
-    Y = pca.transform(Y_full)
     print(
-        f"Valid anchors: {len(valid_anchors)} / {len(anchors)} "
-        f"({len(valid_anchors)/len(anchors)*100:.1f}%)"
+        f"Group split (seed={SEED}): {len(train_anchors)} train / "
+        f"{len(val_anchors)} val / {len(test_anchors)} test raw anchors"
     )
-    print(f"Target reduced: {Y_full.shape[1]}d -> {Y.shape[1]}d "
-          f"(samples-per-dim: {len(X)}/{PCA_COMPONENTS} = {len(X)/PCA_COMPONENTS:.1f})")
 
-    X_train, X_test, Y_train, Y_test, anchors_train, anchors_test = train_test_split(
-        X, Y, valid_anchors, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    X_train, Yf_train, train_valid = build_training_data(
+        train_anchors, eg_vocab, eg_vectors, eng_vocab, eng_vectors
     )
-    Y_test_full = pca.inverse_transform(Y_test)
-    print(f"Train: {len(X_train)}, Test: {len(X_test)}")
+    X_val, Yf_val, val_valid = build_training_data(
+        val_anchors, eg_vocab, eg_vectors, eng_vocab, eng_vectors
+    )
+    X_test, Yf_test, test_valid = build_training_data(
+        test_anchors, eg_vocab, eg_vectors, eng_vocab, eng_vectors
+    )
+    n_valid = len(train_valid) + len(val_valid) + len(test_valid)
+    print(
+        f"Valid anchors: {n_valid} / {len(anchors)} — "
+        f"{len(train_valid)} train / {len(val_valid)} val / {len(test_valid)} test"
+    )
+    print(f"Target reduced: {Yf_train.shape[1]}d -> {PCA_COMPONENTS}d")
 
-    if args.sweep:
-        print("\n=== ALPHA SWEEP (PCA-reduced target) ===")
-        sweep_results = {}
-        for alpha in SWEEP_ALPHAS:
-            m = train_ridge(X_train, Y_train, alpha=alpha)
-            Y_pred_reduced = m.predict(X_test)
-            Y_pred_full = pca.inverse_transform(Y_pred_reduced)
-            te = [a["english"] for a in anchors_test]
-            r = evaluate_alignment(Y_pred_full, te, eng_vocab_list, eng_vectors)
-            sweep_results[alpha] = r
-            print(f"  alpha={alpha:<8} top1={r['top1']:.2f}%  top5={r['top5']:.2f}%  top10={r['top10']:.2f}%")
+    print("Selecting alpha on validation (predictions lifted to 768d)...")
+    val_english = [a["english"] for a in val_valid]
+    best_alpha, sweep = select_alpha(
+        X_train, pca.transform(Yf_train), X_val, val_english,
+        eng_vocab_list, eng_vectors, ALPHAS,
+        predict_transform=pca.inverse_transform,
+    )
+    print(f"Selected alpha={best_alpha}")
 
-        sweep_path = RESULTS_DIR / "alpha_sweep_gemma.json"
-        with open(sweep_path, "w") as f:
-            json.dump({str(k): v for k, v in sweep_results.items()}, f, indent=2)
-        print(f"Sweep saved to: {sweep_path}")
+    X_fit = np.concatenate([X_train, X_val], axis=0)
+    Y_fit = pca.transform(np.concatenate([Yf_train, Yf_val], axis=0))
+    print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
+    model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
-    print(f"\nTraining Ridge (alpha={RIDGE_ALPHA}, target={PCA_COMPONENTS}d)...")
-    model = train_ridge(X_train, Y_train, alpha=RIDGE_ALPHA)
-
-    Y_pred_reduced = model.predict(X_test)
-    Y_pred = pca.inverse_transform(Y_pred_reduced)
-    test_english = [a["english"] for a in anchors_test]
+    Y_pred = pca.inverse_transform(model.predict(X_test))
+    test_english = [a["english"] for a in test_valid]
     results = evaluate_alignment(Y_pred, test_english, eng_vocab_list, eng_vectors)
 
     baseline = None
@@ -161,14 +152,13 @@ def main():
         ),
         "config": {
             "alignment": "PCA-Ridge",
-            "alpha": RIDGE_ALPHA,
+            "alpha": best_alpha,
+            "alpha_sweep_val": sweep,
             "pca_components": PCA_COMPONENTS,
             "pca_variance_retained": round(float(variance_kept), 2),
-            "test_size": TEST_SIZE,
-            "random_state": RANDOM_STATE,
-            "train_size": len(X_train),
+            "train_size": len(X_fit),
             "test_size_count": len(X_test),
-            "valid_anchors": len(valid_anchors),
+            "valid_anchors": n_valid,
             "total_anchors": len(anchors),
             "egyptian_vocab": len(eg_vocab),
             "english_vocab": len(eng_vocab),
@@ -177,6 +167,16 @@ def main():
             "reduced_dim": PCA_COMPONENTS,
             "gemma_model": gemma_model,
             "gloss_hit_rate": gloss_hit_rate,
+            "split": {
+                "method": "gloss-group",
+                "seed": SEED,
+                "val_size": VAL_SIZE,
+                "test_size": TEST_SIZE,
+                "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                        "test": len(test_anchors)},
+                "valid": {"train": len(train_valid), "val": len(val_valid),
+                          "test": len(test_valid)},
+            },
         },
     }
 
