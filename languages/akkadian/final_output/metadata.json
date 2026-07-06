@@ -5,9 +5,9 @@
     "vocab_size": 45769,
     "akkadian_fused_dim": 1536,
     "random_state": 42,
-    "train_size": 14805,
-    "test_size_count": 2281,
-    "valid_anchors": 17086,
+    "train_size": 12888,
+    "test_size_count": 2211,
+    "valid_anchors": 15099,
     "total_anchors": 24415
   },
   "spaces": {
@@ -23,21 +23,21 @@
       "gloss_source": "WordNet first synset",
       "gloss_hit_rate_pct": null,
       "accuracy": {
-        "top1": 36.43138974134152,
-        "top5": 59.184568171854444,
-        "top10": 66.50591845681718
+        "top1": 0.13568521031207598,
+        "top5": 0.5879692446856626,
+        "top10": 1.1759384893713252
       }
     },
     "glove": {
       "dim": 300,
       "dtype": "float16",
-      "ridge_alpha": 0.001,
+      "ridge_alpha": 0.01,
       "ridge_source": "models/ridge_weights.npz",
       "target_source": "data/processed/glove.6B.300d.txt",
       "accuracy": {
-        "top1": 27.79482683033757,
-        "top5": 43.22665497588777,
-        "top10": 47.523016220955725
+        "top1": 0.09045680687471733,
+        "top5": 1.1307100859339665,
+        "top10": 1.7639077340569878
       }
     }
   }

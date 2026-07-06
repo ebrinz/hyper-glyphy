@@ -18,12 +18,13 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import numpy as np
-from sklearn.model_selection import train_test_split
 
+from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
 from languages.akkadian.scripts.align_09 import (
     build_training_data,
     train_ridge,
     evaluate_alignment,
+    select_alpha,
 )
 
 ROOT = Path(__file__).parent.parent
@@ -47,9 +48,8 @@ RESULTS_SUFFIXES = {
 ANCHOR_PATH = DATA_PROCESSED / "english_anchors.json"
 GLOVE_BASELINE_PATH = RESULTS_DIR / "alignment_results.json"
 
-RIDGE_ALPHA = 0.01  # L7: sweep found 0.01 optimal (was 100, copied from Sumerian — wrong for our anchor pool)
-TEST_SIZE = 0.2
-RANDOM_STATE = 42
+SURFACE_KEY = "akkadian"
+ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
 EXPECTED_TARGET_DIM = 768
 
 
@@ -118,45 +118,48 @@ def main():
     print(f"Loading FastText model from {ft_path} (for OOV subword inference)")
     ft_model = FastText.load(str(ft_path))
 
-    X, Y, valid_anchors = build_training_data(
-        anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors, fasttext_model=ft_model
+    train_anchors, val_anchors, test_anchors = group_split(
+        anchors, surface_key=SURFACE_KEY
     )
     print(
-        f"Valid anchors: {len(valid_anchors)} / {len(anchors)} "
-        f"({len(valid_anchors)/len(anchors)*100:.1f}%)"
+        f"Group split (seed={SEED}): {len(train_anchors)} train / "
+        f"{len(val_anchors)} val / {len(test_anchors)} test raw anchors"
     )
 
-    # L5-refined: partition valid anchors by subword_inferred flag. Only in-vocab
-    # anchors go into the test set; OOV-inferred anchors are training-only.
-    in_vocab_mask = np.array([not a.get("subword_inferred") for a in valid_anchors])
-    X_in = X[in_vocab_mask]
-    Y_in = Y[in_vocab_mask]
-    anchors_in = [a for a, m in zip(valid_anchors, in_vocab_mask) if m]
-    X_oov = X[~in_vocab_mask]
-    Y_oov = Y[~in_vocab_mask]
-    anchors_oov = [a for a, m in zip(valid_anchors, in_vocab_mask) if not m]
-
-    X_in_train, X_test, Y_in_train, Y_test, anchors_in_train, anchors_test = train_test_split(
-        X_in, Y_in, anchors_in, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    # OOV subword inference is training-only: val/test are built WITHOUT the
+    # FastText fallback so they stay in-vocab.
+    X_train, Y_train, train_valid = build_training_data(
+        train_anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors,
+        fasttext_model=ft_model,
     )
-
-    # Combine in-vocab train + all OOV anchors as training data
-    X_train = np.concatenate([X_in_train, X_oov], axis=0) if len(X_oov) else X_in_train
-    Y_train = np.concatenate([Y_in_train, Y_oov], axis=0) if len(Y_oov) else Y_in_train
-    anchors_train = anchors_in_train + anchors_oov
-
+    X_val, Y_val, val_valid = build_training_data(
+        val_anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
+    )
+    X_test, Y_test, test_valid = build_training_data(
+        test_anchors, sum_vocab, sum_vectors, eng_vocab, eng_vectors
+    )
+    n_oov_train = sum(1 for a in train_valid if a.get("subword_inferred"))
+    n_valid = len(train_valid) + len(val_valid) + len(test_valid)
     print(
-        f"In-vocab anchors: {len(anchors_in)} (split into "
-        f"{len(anchors_in_train)} train + {len(anchors_test)} test). "
-        f"OOV anchors (subword-inferred): {len(anchors_oov)} (added to train only)."
+        f"Valid anchors: {n_valid} / {len(anchors)} — "
+        f"{len(train_valid)} train ({n_oov_train} OOV-inferred) / "
+        f"{len(val_valid)} val / {len(test_valid)} test"
     )
-    print(f"Train: {len(X_train)}, Test: {len(X_test)}")
 
-    print(f"Training Ridge (alpha={RIDGE_ALPHA})...")
-    model = train_ridge(X_train, Y_train, alpha=RIDGE_ALPHA)
+    print("Selecting alpha on validation...")
+    val_english = [a["english"] for a in val_valid]
+    best_alpha, sweep = select_alpha(
+        X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors, ALPHAS
+    )
+    print(f"Selected alpha={best_alpha}")
+
+    X_fit = np.concatenate([X_train, X_val], axis=0)
+    Y_fit = np.concatenate([Y_train, Y_val], axis=0)
+    print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
+    model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
     Y_pred = model.predict(X_test)
-    test_english = [a["english"] for a in anchors_test]
+    test_english = [a["english"] for a in test_valid]
     results = evaluate_alignment(Y_pred, test_english, eng_vocab_list, eng_vectors)
 
     baseline = None
@@ -187,12 +190,11 @@ def main():
         ),
         "config": {
             "alignment": "Ridge",
-            "alpha": RIDGE_ALPHA,
-            "test_size": TEST_SIZE,
-            "random_state": RANDOM_STATE,
-            "train_size": len(X_train),
+            "alpha": best_alpha,
+            "alpha_sweep_val": sweep,
+            "train_size": len(X_fit),
             "test_size_count": len(X_test),
-            "valid_anchors": len(valid_anchors),
+            "valid_anchors": n_valid,
             "total_anchors": len(anchors),
             "sumerian_vocab": len(sum_vocab),
             "english_vocab": len(eng_vocab),
@@ -201,6 +203,17 @@ def main():
             "gemma_model": gemma_model,
             "gloss_hit_rate": gloss_hit_rate,
             "mode": mode_label,
+            "split": {
+                "method": "lemma-group",
+                "seed": SEED,
+                "val_size": VAL_SIZE,
+                "test_size": TEST_SIZE,
+                "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                        "test": len(test_anchors)},
+                "valid": {"train": len(train_valid), "val": len(val_valid),
+                          "test": len(test_valid)},
+                "oov_train_only": n_oov_train,
+            },
         },
     }
 
