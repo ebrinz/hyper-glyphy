@@ -83,3 +83,51 @@ def test_partition_proportions():
 
 def test_empty_input():
     assert group_split([], surface_key="akkadian") == ([], [], [])
+
+
+def test_near_surface_edges_merge_same_gloss_ed1():
+    anchors = [
+        {"hittite": "kattan", "english": "under", "lemmas": ["kattan"]},
+        {"hittite": "katta", "english": "under", "lemmas": ["katta"]},
+    ]
+    train, val, test = group_split(anchors, surface_key="hittite")
+    parts = [p for p in (train, val, test) if p]
+    assert len(parts) == 1  # ed<=1 + same gloss => one group
+
+
+def test_near_surface_edges_do_not_merge_different_gloss():
+    anchors = [
+        {"akkadian": "abc", "english": "one", "lemmas": ["L1"]},
+        {"akkadian": "abd", "english": "two", "lemmas": ["L2"]},
+    ] * 50
+    train, val, test = group_split(anchors, surface_key="akkadian")
+    # Two groups exist; with 100 anchors they may land anywhere, but the two
+    # surfaces must not be forced together: check group count via build_groups.
+    from shared.scripts.anchor_split import build_groups
+
+    gids = build_groups(anchors, surface_key="akkadian")
+    assert len(set(gids)) == 2
+
+
+def test_near_surface_edges_can_be_disabled():
+    anchors = [
+        {"hittite": "kattan", "english": "under", "lemmas": ["kattan"]},
+        {"hittite": "katta", "english": "under", "lemmas": ["katta"]},
+    ]
+    from shared.scripts.anchor_split import build_groups
+
+    assert len(set(build_groups(anchors, surface_key="hittite",
+                                near_surface_edges=False))) == 2
+
+
+def test_surface_casefold_fallback():
+    anchors = [
+        {"egyptian_raw": "Wsjr", "english": "osiris"},
+        {"egyptian_raw": "wsjr", "english": "osiris-name"},
+        {"egyptian_raw": "nTr", "english": "god"},
+    ]
+    from shared.scripts.anchor_split import build_groups
+
+    gids = build_groups(anchors, surface_key="egyptian_raw",
+                        fallback="surface_casefold", near_surface_edges=False)
+    assert gids[0] == gids[1] and gids[0] != gids[2]

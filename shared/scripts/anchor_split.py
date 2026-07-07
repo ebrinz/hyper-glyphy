@@ -39,13 +39,41 @@ class _UnionFind:
             self.parent[rb] = ra
 
 
-def build_groups(anchors, surface_key):
+def _ed_le_1(a, b):
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la == lb:
+        return sum(x != y for x, y in zip(a, b)) == 1
+    if la > lb:
+        a, b, la, lb = b, a, lb, la
+    i = j = diff = 0
+    while i < la and j < lb:
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+        else:
+            diff += 1
+            if diff > 1:
+                return False
+            j += 1
+    return True
+
+
+def build_groups(anchors, surface_key, fallback="gloss", near_surface_edges=True):
     """Return one group id per anchor via union-find.
 
     Node keys per anchor: ("surface", <source surface>) always, plus
-    ("lemma", l) for each entry in anchor["lemmas"] when present, else
-    ("gloss", anchor["english"]).
+    ("lemma", l) for each entry in anchor["lemmas"] when present; otherwise
+    the fallback node — ("gloss", english) or ("surface_cf", casefolded
+    surface). With near_surface_edges, anchors sharing a gloss whose surfaces
+    are within edit distance 1 also merge (kills residual spelling-variant
+    leakage, e.g. TLHdig cf orthography).
     """
+    if fallback not in ("gloss", "surface_casefold"):
+        raise ValueError(f"unknown fallback: {fallback}")
     uf = _UnionFind()
     anchor_nodes = []
     for a in anchors:
@@ -53,25 +81,41 @@ def build_groups(anchors, surface_key):
         lemmas = a.get("lemmas")
         if lemmas:
             others = [("lemma", l) for l in lemmas]
-        else:
+        elif fallback == "gloss":
             others = [("gloss", a["english"])]
+        else:
+            others = [("surface_cf", a[surface_key].casefold())]
         for node in others:
             uf.union(surface_node, node)
         anchor_nodes.append(surface_node)
+
+    if near_surface_edges:
+        by_gloss = {}
+        for a in anchors:
+            by_gloss.setdefault(a["english"], set()).add(a[surface_key])
+        for gloss, surfaces in by_gloss.items():
+            ss = sorted(surfaces)
+            for i in range(len(ss)):
+                for j in range(i + 1, len(ss)):
+                    if _ed_le_1(ss[i], ss[j]):
+                        uf.union(("surface", ss[i]), ("surface", ss[j]))
+
     return [uf.find(n) for n in anchor_nodes]
 
 
 def group_split(anchors, surface_key, val_size=VAL_SIZE, test_size=TEST_SIZE,
-                seed=SEED):
+                seed=SEED, fallback="gloss", near_surface_edges=True):
     """Split anchors into (train, val, test); no group spans partitions.
 
     Deterministic for a given (anchors, seed). Original anchor order is
-    preserved within each partition.
+    preserved within each partition. `fallback` and `near_surface_edges` are
+    forwarded to build_groups unchanged.
     """
     if not anchors:
         return [], [], []
 
-    group_ids = build_groups(anchors, surface_key)
+    group_ids = build_groups(anchors, surface_key, fallback=fallback,
+                             near_surface_edges=near_surface_edges)
     groups = {}
     for idx, gid in enumerate(group_ids):
         groups.setdefault(gid, []).append(idx)
