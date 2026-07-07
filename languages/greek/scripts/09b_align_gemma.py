@@ -11,6 +11,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from tqdm import tqdm  # noqa: F401 — canonical template; select_alpha uses it via align_09
 
 # Ensure repo root is importable when invoked directly (pytest.ini only affects pytest).
 _ROOT = Path(__file__).parent.parent.parent.parent
@@ -20,6 +21,13 @@ if str(_ROOT) not in sys.path:
 import numpy as np
 
 from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
+from shared.scripts.eval_suite import (
+    CAND_SIZE,
+    save_artifacts,
+    score_suite,
+    stratify,
+    val_top1_csls,  # noqa: F401 — used inside imported select_alpha
+)
 from languages.greek.scripts.align_09 import (
     build_training_data,
     train_ridge,
@@ -54,6 +62,8 @@ EXPECTED_TARGET_DIM = 768
 
 
 def main():
+    import os
+    alphas = [0.01] if os.environ.get("EVAL_SMOKE") else ALPHAS
     parser = argparse.ArgumentParser(description="Ridge alignment: Sumerian FastText -> EmbeddingGemma 768d.")
     parser.add_argument(
         "--mode",
@@ -149,7 +159,7 @@ def main():
     print("Selecting alpha on validation...")
     val_english = [a["english"] for a in val_valid]
     best_alpha, sweep = select_alpha(
-        X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors, ALPHAS
+        X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors, alphas
     )
     print(f"Selected alpha={best_alpha}")
 
@@ -158,14 +168,105 @@ def main():
     print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
     model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
-    Y_pred = model.predict(X_test)
-    test_english = [a["english"] for a in test_valid]
-    results = evaluate_alignment(Y_pred, test_english, eng_vocab_list, eng_vectors)
+    # Artifact bundle: predictions in full target space + strata metadata.
+    rng = np.random.RandomState(SEED)
+    non_oov_train = [
+        (i, a) for i, a in enumerate(train_valid) if not a.get("subword_inferred")
+    ]
+    sample_idx = rng.choice(
+        len(non_oov_train), size=min(1000, len(non_oov_train)), replace=False
+    )
+    train_sample = [non_oov_train[i] for i in sample_idx]
+    Q_train = model.predict(X_train[[i for i, _ in train_sample]])
+    Q_val = model.predict(X_val)
+    Q_test = model.predict(X_test)
+
+    trainval_golds = {a["english"] for a in train_valid} | {
+        a["english"] for a in val_valid
+    }
+    test_strata = stratify([a["english"] for a in test_valid], trainval_golds)
+
+    config = {
+        "target": "gemma",
+        "target_cache": str(english_gemma_path),
+        "alpha": best_alpha,
+        "alpha_sweep_val": sweep,
+        "seed": SEED,
+        "candidate_vocab_size": CAND_SIZE,
+        "split": {
+            "method": "lemma-group",
+            "seed": SEED,
+            "val_size": VAL_SIZE,
+            "test_size": TEST_SIZE,
+            "near_surface_edges": True,
+            "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                    "test": len(test_anchors)},
+            "valid": {"train": len(train_valid), "val": len(val_valid),
+                      "test": len(test_valid)},
+            "oov_train_only": n_oov_train,
+        },
+    }
+    prefix = str(RESULTS_DIR / "eval_artifacts_gemma")
+    save_artifacts(
+        prefix,
+        coef=model.coef_, intercept=model.intercept_,
+        Q_train=Q_train, Q_val=Q_val, Q_test=Q_test,
+        train_sample=[{"surface": a[SURFACE_KEY], "gold": a["english"]}
+                      for _, a in train_sample],
+        val=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in val_valid],
+        test=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in test_valid],
+        test_strata=test_strata,
+        config=config,
+    )
+    print(f"Artifacts saved to {prefix}.npz/.json")
+
+    cand_vectors = eng_vectors[:CAND_SIZE]
+    cand_vocab = eng_vocab_list[:CAND_SIZE]
+    from shared.scripts.eval_suite import load_artifacts
+
+    suite = score_suite(load_artifacts(prefix), cand_vectors, cand_vocab)
+
+    print("\n=== METRIC SUITE (CSLS, 50k candidates, exact/syn) ===")
+    for regime in ("dictionary_in_sample", "interpolation", "zero_shot", "test_combined"):
+        r = suite[regime]
+        print(f"{regime:<22} n={r['n']:>6} "
+              + "  ".join(f"top{k}={r[f'top{k}']['exact']:.2f}/{r[f'top{k}']['syn']:.2f}"
+                          for k in (1, 5, 10)))
+
+    combined = suite["test_combined"]
+    full_results = {
+        # Legacy key: combined-strata test CSLS/restricted EXACT top-k, so
+        # 10_export_production.py keeps reading the same shape.
+        "accuracy": {f"top{k}": combined[f"top{k}"]["exact"] for k in (1, 5, 10)},
+        "metric_suite": suite,
+        "config": config | {
+            "train_size": len(X_fit),
+            "test_size": len(X_test),
+            "valid_anchors": n_valid,
+            "total_anchors": len(anchors),
+            "sumerian_vocab": len(sum_vocab),
+            "fused_dim": int(sum_vectors.shape[1]),
+            "target_dim": int(eng_vectors.shape[1]),
+            "gemma_model": gemma_model,
+            "gloss_hit_rate": gloss_hit_rate,
+            "mode": mode_label,
+            "english_vocab": len(eng_vocab),
+        },
+    }
+
+    results = full_results["accuracy"]
 
     baseline = None
     if GLOVE_BASELINE_PATH.exists():
         with open(GLOVE_BASELINE_PATH) as f:
             baseline = json.load(f).get("accuracy", {})
+
+    full_results["baseline_glove"] = baseline
+    full_results["deltas_vs_glove"] = (
+        {k: results[k] - baseline[k] for k in results if k in baseline}
+        if baseline
+        else None
+    )
 
     print(f"\n=== RESULTS (Gemma target) ===")
     for k_str in ("top1", "top5", "top10"):
@@ -179,43 +280,6 @@ def main():
             )
         else:
             print(f"{k_str.upper():<6} Gemma {gemma_val:6.2f}%")
-
-    full_results = {
-        "accuracy": results,
-        "baseline_glove": baseline,
-        "deltas_vs_glove": (
-            {k: results[k] - baseline[k] for k in results if k in baseline}
-            if baseline
-            else None
-        ),
-        "config": {
-            "alignment": "Ridge",
-            "alpha": best_alpha,
-            "alpha_sweep_val": sweep,
-            "train_size": len(X_fit),
-            "test_size_count": len(X_test),
-            "valid_anchors": n_valid,
-            "total_anchors": len(anchors),
-            "sumerian_vocab": len(sum_vocab),
-            "english_vocab": len(eng_vocab),
-            "fused_dim": int(sum_vectors.shape[1]),
-            "target_dim": int(eng_vectors.shape[1]),
-            "gemma_model": gemma_model,
-            "gloss_hit_rate": gloss_hit_rate,
-            "mode": mode_label,
-            "split": {
-                "method": "lemma-group",
-                "seed": SEED,
-                "val_size": VAL_SIZE,
-                "test_size": TEST_SIZE,
-                "raw": {"train": len(train_anchors), "val": len(val_anchors),
-                        "test": len(test_anchors)},
-                "valid": {"train": len(train_valid), "val": len(val_valid),
-                          "test": len(test_valid)},
-                "oov_train_only": n_oov_train,
-            },
-        },
-    }
 
     with open(results_out_path, "w") as f:
         json.dump(full_results, f, indent=2)
