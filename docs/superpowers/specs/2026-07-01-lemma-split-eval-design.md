@@ -68,9 +68,14 @@ group_split(anchors, *, source_key, val_size=0.16, test_size=0.20, seed=42)
   surface (a surface serving two lemmas must land on one side). Anchors with no
   `lemmas` field group by English gloss (Egyptian; guarantees no gold label spans the
   split there).
-- **Assignment:** groups shuffled deterministically (seed), walked once: assign to test
-  until ≥ test_size of total anchor mass, then to val until ≥ val_size, remainder
-  train. Deterministic given (anchors, seed).
+- **Assignment:** groups shuffled deterministically (seed), then assigned
+  largest-group-first to the partition with the greatest remaining deficit.
+  Deterministic given (anchors, seed). *(Amended post-implementation: the original
+  text said "walked once: test until ≥ test_size, then val, remainder train" — the
+  shipped greedy-deficit policy prevents oversized groups from blowing up the test
+  fraction, at the cost of systematically placing large lemma families in train;
+  this contributes to the near-zero-shot character of the test set documented in
+  the 2026-07-06 journal entry.)*
 - **L5 OOV rule moves here:** a subword-inferred (OOV) anchor follows its group.
   Train-group OOVs are trained on; **val/test-group OOVs are dropped entirely**
   (currently they leak into training). Val/test remain in-vocab-only, as before.

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-01-lemma-split-eval-design.md`
 
+**⚠ Deviation 2 (recorded post-merge-review):** group assignment is largest-group-first to the greatest-deficit partition, not the spec's shuffled walk-once fill — prevents oversized groups from inflating the test fraction; consequence: large lemma families concentrate in train (see 2026-07-06 journal entry). Spec §2 amended to match.
+
 **⚠ One structural deviation from the spec (same methodology, different file layout):** the spec kept `ridge_alpha_sweep.py` as the alpha selector with 09/09b consuming its choice. This plan instead builds validation-based alpha selection directly into every 09/09b run (`select_alpha()` helper) and deletes `ridge_alpha_sweep.py`. Rationale: Egyptian already sweeps inline; a separate sweep file requires manually transcribing alpha into 09b (the exact drift that produced the Sumerian alpha-recording bug); and keeping a test-set-tuning script invites misuse. The methodology is exactly the spec's: val selects, train+val retrains, test reports. Doc references to `ridge_alpha_sweep.py` (e.g. Hittite README) are handled by the separate docs-refresh task.
 
 ## Global Constraints
