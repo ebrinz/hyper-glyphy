@@ -102,3 +102,24 @@ def test_val_top1_csls():
     C, vocab = _identity_setup()
     acc = val_top1_csls(C[[0, 2]], ["king", "reed"], C, vocab)
     assert acc == 100.0
+
+
+def test_artifact_roundtrip(tmp_path):
+    from shared.scripts.eval_suite import load_artifacts, save_artifacts
+
+    prefix = str(tmp_path / "eval_artifacts_gemma")
+    rng = np.random.RandomState(3)
+    save_artifacts(
+        prefix,
+        coef=rng.randn(4, 8), intercept=rng.randn(4),
+        Q_train=rng.randn(3, 4), Q_val=rng.randn(2, 4), Q_test=rng.randn(2, 4),
+        train_sample=[{"surface": "a", "gold": "x"}] * 3,
+        val=[{"surface": "b", "gold": "y"}] * 2,
+        test=[{"surface": "c", "gold": "x"}, {"surface": "d", "gold": "z"}],
+        test_strata=["interpolation", "zero_shot"],
+        config={"target": "gemma", "target_cache": "unused", "alpha": 0.01, "seed": 42},
+    )
+    art = load_artifacts(prefix)
+    assert art["Q_test"].shape == (2, 4)
+    assert art["meta"]["test_strata"] == ["interpolation", "zero_shot"]
+    assert art["meta"]["config"]["alpha"] == 0.01

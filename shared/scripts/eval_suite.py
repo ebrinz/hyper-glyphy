@@ -131,3 +131,91 @@ def score_suite(artifacts, cand_vectors, cand_vocab):
         suite[name] = score_regime(Qs, gs, cand_vectors, cand_vocab, pool)
     suite["test_combined"] = score_regime(Q_test, test_golds, cand_vectors, cand_vocab, pool)
     return suite
+
+
+import json
+from pathlib import Path
+
+
+def save_artifacts(prefix, *, coef, intercept, Q_train, Q_val, Q_test,
+                   train_sample, val, test, test_strata, config):
+    np.savez_compressed(
+        prefix + ".npz",
+        coef=coef, intercept=intercept,
+        Q_train=np.asarray(Q_train, dtype=np.float32),
+        Q_val=np.asarray(Q_val, dtype=np.float32),
+        Q_test=np.asarray(Q_test, dtype=np.float32),
+    )
+    with open(prefix + ".json", "w", encoding="utf-8") as f:
+        json.dump(
+            {"train_sample": train_sample, "val": val, "test": test,
+             "test_strata": test_strata, "config": config},
+            f, ensure_ascii=False, indent=2,
+        )
+
+
+def load_artifacts(prefix):
+    npz = np.load(prefix + ".npz")
+    with open(prefix + ".json", encoding="utf-8") as f:
+        meta = json.load(f)
+    return {"coef": npz["coef"], "intercept": npz["intercept"],
+            "Q_train": npz["Q_train"], "Q_val": npz["Q_val"],
+            "Q_test": npz["Q_test"], "meta": meta}
+
+
+def load_candidates(config):
+    """First CAND_SIZE rows of the target cache named in config."""
+    path = config["target_cache"]
+    if path.endswith(".npz"):
+        data = np.load(path)
+        vecs = data["vectors"][:CAND_SIZE].astype(np.float32)
+        vocab = [str(w) for w in data["vocab"][:CAND_SIZE]]
+    else:  # GloVe text format
+        vocab, rows = [], []
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                parts = line.rstrip().split(" ")
+                vocab.append(parts[0])
+                rows.append(np.asarray(parts[1:], dtype=np.float32))
+                if len(vocab) >= CAND_SIZE:
+                    break
+        vecs = np.array(rows)
+    return vecs, vocab
+
+
+def _print_suite(suite):
+    for regime in ("dictionary_in_sample", "interpolation", "zero_shot", "test_combined"):
+        r = suite[regime]
+        cells = "  ".join(
+            f"top{k}={r[f'top{k}']['exact']:.2f}/{r[f'top{k}']['syn']:.2f}%"
+            for k in (1, 5, 10)
+        )
+        print(f"{regime:<22} n={r['n']:>6} oov={r['gold_oov_candidates']:>5}  {cells} (exact/syn)")
+
+
+def main():
+    import argparse
+
+    p = argparse.ArgumentParser(description="Score an alignment artifact bundle.")
+    p.add_argument("slot_dir", help="e.g. languages/akkadian")
+    p.add_argument("--target", choices=("gemma", "glove"), default="gemma")
+    p.add_argument("--cand-size", type=int, default=None,
+                   help="Override candidate vocab size (continuity flag; e.g. 400000 for full-vocab)")
+    args = p.parse_args()
+
+    prefix = str(Path(args.slot_dir) / "results" / f"eval_artifacts_{args.target}")
+    art = load_artifacts(prefix)
+    global CAND_SIZE
+    if args.cand_size:
+        CAND_SIZE = args.cand_size
+    cand_vectors, cand_vocab = load_candidates(art["meta"]["config"])
+    suite = score_suite(art, cand_vectors, cand_vocab)
+    _print_suite(suite)
+    out = Path(args.slot_dir) / "results" / f"eval_suite_{args.target}.json"
+    with open(out, "w") as f:
+        json.dump(suite, f, indent=2)
+    print(f"Saved to: {out}")
+
+
+if __name__ == "__main__":
+    main()
