@@ -49,3 +49,56 @@ def test_csls_chunking_consistent():
 
 def test_constants():
     assert CAND_SIZE == 50000 and K_CSLS == 10
+
+
+from shared.scripts.eval_suite import (
+    score_regime,
+    stratify,
+    synonym_set,
+    val_top1_csls,
+)
+
+
+def test_stratify():
+    strata = stratify(["king", "reed"], {"king", "water"})
+    assert strata == ["interpolation", "zero_shot"]
+
+
+def test_synonym_set_contains_wordnet_synonyms():
+    s = synonym_set("king")
+    assert "king" in s and "male monarch" in s
+
+
+def test_synonym_set_unknown_word_is_identity():
+    assert synonym_set("zzzznotaword") == {"zzzznotaword"}
+
+
+def _identity_setup():
+    # Candidates are unit basis vectors; query i equals candidate i exactly.
+    C = np.eye(6, dtype=np.float32)
+    vocab = ["king", "water", "reed", "house", "ruler", "sea"]
+    return C, vocab
+
+
+def test_score_regime_exact_and_syn():
+    C, vocab = _identity_setup()
+    Q = C[[0, 1]]                      # predict "king", "water" exactly
+    r = score_regime(Q, ["ruler", "sea"], C, vocab, query_pool=C, ks=(1,))
+    assert r["n"] == 2
+    assert r["top1"]["exact"] == 0.0   # retrieved words differ from golds
+    # "king" shares a synset with "ruler"? WordNet: king/ruler NOT synonyms;
+    # but water/sea are not either — use a real pair: predict index of "king"
+    r2 = score_regime(C[[0]], ["king"], C, vocab, query_pool=C, ks=(1,))
+    assert r2["top1"]["exact"] == 100.0 and r2["top1"]["syn"] == 100.0
+
+
+def test_score_regime_gold_oov_candidates():
+    C, vocab = _identity_setup()
+    r = score_regime(C[[0]], ["notinvocab"], C, vocab, query_pool=C, ks=(1,))
+    assert r["n"] == 0 and r["gold_oov_candidates"] == 1
+
+
+def test_val_top1_csls():
+    C, vocab = _identity_setup()
+    acc = val_top1_csls(C[[0, 2]], ["king", "reed"], C, vocab)
+    assert acc == 100.0
