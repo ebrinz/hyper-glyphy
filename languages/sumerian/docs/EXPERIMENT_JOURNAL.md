@@ -1,6 +1,12 @@
 # Experiment Journal
 
-Running log of experiments on the Cuneiformy pipeline. Reverse chronological — newest at the top. Each entry records hypothesis, method, result, and takeaway so that past attempts (and null results) stay legible even when the surrounding code has moved on.
+> **2026-07-06 — All headline accuracy numbers in this journal are pre-fix (leaked split).**
+> See the repo-wide journal ([`docs/EXPERIMENT_JOURNAL.md`](../../../../docs/EXPERIMENT_JOURNAL.md),
+> 2026-07-06 entry) for the full eval-integrity writeup. The historical record here (W2b,
+> Phase A/B, Workstreams 2a/2b) remains valid as history; the 52.13% Sumerian top-1 is
+> a pre-fix number and does not represent honest zero-shot accuracy.
+
+Running log of experiments on the Sumerian pipeline. Reverse chronological — newest at the top. Each entry records hypothesis, method, result, and takeaway so that past attempts (and null results) stay legible even when the surrounding code has moved on.
 
 Entry format:
 
