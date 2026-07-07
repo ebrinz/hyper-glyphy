@@ -19,12 +19,20 @@ from pathlib import Path
 from sklearn.linear_model import Ridge
 from scipy.spatial.distance import cdist
 import sys
+from tqdm import tqdm
 
 _ROOT = Path(__file__).parent.parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
+from shared.scripts.eval_suite import (
+    CAND_SIZE,
+    save_artifacts,
+    score_suite,
+    stratify,
+    val_top1_csls,
+)
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
 DATA_PROCESSED = Path(__file__).parent.parent / "data" / "processed"
@@ -138,20 +146,25 @@ def select_alpha(
     """
     sweep = []
     best_alpha, best_top1 = None, -1.0
-    for alpha in alphas:
+    for alpha in tqdm(alphas, desc="alpha sweep", file=sys.stderr,
+                      disable=not sys.stderr.isatty()):
         model = train_ridge(X_train, Y_train, alpha=alpha)
         Y_pred = model.predict(X_val)
         if predict_transform is not None:
             Y_pred = predict_transform(Y_pred)
-        acc = evaluate_alignment(Y_pred, val_english, eng_vocab_list, eng_vectors)
-        sweep.append({"alpha": alpha, "accuracy": acc})
-        print(f"  alpha={alpha:<10g} val top1={acc['top1']:.2f}%")
-        if acc["top1"] > best_top1:
-            best_alpha, best_top1 = alpha, acc["top1"]
+        top1 = val_top1_csls(
+            Y_pred, val_english, eng_vectors[:CAND_SIZE], eng_vocab_list[:CAND_SIZE]
+        )
+        sweep.append({"alpha": alpha, "val_top1_csls_exact": top1})
+        print(f"  alpha={alpha:<10g} val top1 (CSLS/50k)={top1:.2f}%")
+        if top1 > best_top1:
+            best_alpha, best_top1 = alpha, top1
     return best_alpha, sweep
 
 
 def main():
+    import os
+    alphas = [0.01] if os.environ.get("EVAL_SMOKE") else ALPHAS
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     fused_path = MODELS_DIR / "fused_embeddings_1536d.npz"
@@ -219,7 +232,7 @@ def main():
     print("Selecting alpha on validation...")
     val_english = [a["english"] for a in val_valid]
     best_alpha, sweep = select_alpha(
-        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, ALPHAS
+        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, alphas
     )
     print(f"Selected alpha={best_alpha}")
 
@@ -228,22 +241,78 @@ def main():
     print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
     model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
-    Y_pred = model.predict(X_test)
+    # Artifact bundle: predictions in full target space + strata metadata.
+    rng = np.random.RandomState(SEED)
+    non_oov_train = [
+        (i, a) for i, a in enumerate(train_valid) if not a.get("subword_inferred")
+    ]
+    sample_idx = rng.choice(
+        len(non_oov_train), size=min(1000, len(non_oov_train)), replace=False
+    )
+    train_sample = [non_oov_train[i] for i in sample_idx]
+    Q_train = model.predict(X_train[[i for i, _ in train_sample]])
+    Q_val = model.predict(X_val)
+    Q_test = model.predict(X_test)
 
-    test_english = [a["english"] for a in test_valid]
-    results = evaluate_alignment(Y_pred, test_english, glove_vocab, glove_vectors)
+    trainval_golds = {a["english"] for a in train_valid} | {
+        a["english"] for a in val_valid
+    }
+    test_strata = stratify([a["english"] for a in test_valid], trainval_golds)
 
-    print(f"\n=== RESULTS ===")
-    print(f"Top-1 Accuracy:  {results['top1']:.2f}%")
-    print(f"Top-5 Accuracy:  {results['top5']:.2f}%")
-    print(f"Top-10 Accuracy: {results['top10']:.2f}%")
+    config = {
+        "target": "glove",
+        "target_cache": str(glove_path),
+        "alpha": best_alpha,
+        "alpha_sweep_val": sweep,
+        "seed": SEED,
+        "candidate_vocab_size": CAND_SIZE,
+        "split": {
+            "method": "lemma-group",
+            "seed": SEED,
+            "val_size": VAL_SIZE,
+            "test_size": TEST_SIZE,
+            "near_surface_edges": True,
+            "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                    "test": len(test_anchors)},
+            "valid": {"train": len(train_valid), "val": len(val_valid),
+                      "test": len(test_valid)},
+            "oov_train_only": n_oov_train,
+        },
+    }
+    prefix = str(RESULTS_DIR / "eval_artifacts_glove")
+    save_artifacts(
+        prefix,
+        coef=model.coef_, intercept=model.intercept_,
+        Q_train=Q_train, Q_val=Q_val, Q_test=Q_test,
+        train_sample=[{"surface": a[SURFACE_KEY], "gold": a["english"]}
+                      for _, a in train_sample],
+        val=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in val_valid],
+        test=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in test_valid],
+        test_strata=test_strata,
+        config=config,
+    )
+    print(f"Artifacts saved to {prefix}.npz/.json")
 
+    cand_vectors = glove_vectors[:CAND_SIZE]
+    cand_vocab = glove_vocab[:CAND_SIZE]
+    from shared.scripts.eval_suite import load_artifacts
+
+    suite = score_suite(load_artifacts(prefix), cand_vectors, cand_vocab)
+
+    print("\n=== METRIC SUITE (CSLS, 50k candidates, exact/syn) ===")
+    for regime in ("dictionary_in_sample", "interpolation", "zero_shot", "test_combined"):
+        r = suite[regime]
+        print(f"{regime:<22} n={r['n']:>6} "
+              + "  ".join(f"top{k}={r[f'top{k}']['exact']:.2f}/{r[f'top{k}']['syn']:.2f}"
+                          for k in (1, 5, 10)))
+
+    combined = suite["test_combined"]
     full_results = {
-        "accuracy": results,
-        "config": {
-            "alignment": "Ridge",
-            "alpha": best_alpha,
-            "alpha_sweep_val": sweep,
+        # Legacy key: combined-strata test CSLS/restricted EXACT top-k, so
+        # 10_export_production.py keeps reading the same shape.
+        "accuracy": {f"top{k}": combined[f"top{k}"]["exact"] for k in (1, 5, 10)},
+        "metric_suite": suite,
+        "config": config | {
             "train_size": len(X_fit),
             "test_size": len(X_test),
             "valid_anchors": n_valid,
@@ -251,17 +320,6 @@ def main():
             "sumerian_vocab": len(sum_vocab),
             "fused_dim": int(sum_vectors.shape[1]),
             "glove_dim": int(glove_vectors.shape[1]),
-            "split": {
-                "method": "lemma-group",
-                "seed": SEED,
-                "val_size": VAL_SIZE,
-                "test_size": TEST_SIZE,
-                "raw": {"train": len(train_anchors), "val": len(val_anchors),
-                        "test": len(test_anchors)},
-                "valid": {"train": len(train_valid), "val": len(val_valid),
-                          "test": len(test_valid)},
-                "oov_train_only": n_oov_train,
-            },
         },
     }
 
