@@ -1,5 +1,13 @@
 # Hittite Experiment Journal
 
+> **2026-07-06 — All accuracy numbers in this journal are pre-fix (leaked split).**
+> See the repo-wide journal ([`docs/EXPERIMENT_JOURNAL.md`](../../../../docs/EXPERIMENT_JOURNAL.md),
+> 2026-07-06 entry) for the full eval-integrity writeup. Hittite reruns deferred pending
+> eval redesign (Hittite also has ~11% residual leak from TLHdig citation-form spelling
+> variants — needs cf-variant merging before rerun).
+
+---
+
 ## 2026-05-11 — v1 ship: TLHdig Hittite aligned to whitened-Gemma 768d
 
 **Spec:** brief (no formal design doc; followed the Akkadian framework with deltas
@@ -9,14 +17,16 @@ captured in this entry)
 
 ### Headline numbers (whitened-Gemma 768d primary, GloVe 300d secondary)
 
+All numbers pre-fix (leaked split) — see note at top of file.
+
 | Metric | Hittite v1 | Akkadian v1.3 | Sumerian | Egyptian |
 |--------|:---:|:---:|:---:|:---:|
-| Top-1 (Gemma) | **40.62%** | 36.43% | 52.13% | n/a |
-| Top-5 (Gemma) | 50.99% | 59.18% | 61.97% | n/a |
-| Top-10 (Gemma) | 55.02% | 66.51% | 65.99% | n/a |
-| Top-1 (GloVe) | 35.40% | 27.79% | 35.70% | 32.35% |
-| Top-5 (GloVe) | 41.88% | 43.23% | 44.61% | 41.47% |
-| Top-10 (GloVe) | 43.20% | 47.52% | 47.93% | 45.13% |
+| Top-1 (Gemma) | **40.62%** | 36.43% | 52.13% | 34.57% |
+| Top-5 (Gemma) | 50.99% | 59.18% | 61.97% | 40.76% |
+| Top-10 (Gemma) | 55.02% | 66.51% | 65.99% | 43.73% |
+| Top-1 (GloVe) | 35.40% | 27.79% | 35.70% | 33.42% |
+| Top-5 (GloVe) | 41.88% | 43.23% | 44.61% | 41.75% |
+| Top-10 (GloVe) | 43.20% | 47.52% | 47.93% | 45.38% |
 | FastText vocab | 31,412 | 45,769 | — | — |
 | Corpus tokens | 591k | 3,000k | 2,800k | 789k |
 | Anchors (training set) | 6,056 | 8,710 | 6,867 | 5,360 |

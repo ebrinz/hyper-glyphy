@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Cuneiformy" width="100%"/>
+  <img src="assets/banner.svg" alt="hyper-glyphy" width="100%"/>
 </p>
 
 <p align="center">
-  <strong>Map ancient Sumerian words into modern English semantic space</strong>
+  <strong>Cross-lingual embedding alignment for ancient languages — five language slots, one shared pipeline</strong>
 </p>
 
 <p align="center">
@@ -28,29 +28,32 @@
 > seen-lemma lookup (~44% top-1 on trained anchors) and document-level comparison. Full
 > evidence and methodology: [experiment journal](docs/EXPERIMENT_JOURNAL.md), 2026-07-06 entry.
 
-Previously reported (pre-fix, leaked split) — whitened EmbeddingGemma alignment (post Workstream 2b):
+Previously reported (pre-fix, leaked split) — all five language slots, per-slot READMEs have details:
 
-| Metric | Cuneiformy (whitened-Gemma 768d) | Cuneiformy v1 (GloVe 300d) | Heiroglyphy (Egyptian) |
-|--------|:--------------------:|:---------------------:|:---------------------:|
-| Top-1 Accuracy | **52.13%** | 35.70% | 32.35% |
-| Top-5 Accuracy | **61.97%** | 44.61% | 41.47% |
-| Top-10 Accuracy | **65.99%** | 47.93% | 45.13% |
-| Training Anchors | 6,867 | 6,867 | 5,360 |
-| Valid Anchors | 8,558 / 13,100 (65.3%) | 8,558 / 13,100 (65.3%) | — |
-| Corpus Lines | 2.8M (pre-dedup) | 2.8M | 100K |
-| Target Space | 768d whitened-Gemma (primary) | 300d GloVe (secondary, retained) | 300d GloVe |
+| Slot | Gemma top-1 | GloVe top-1 | Family / Script |
+|------|:-----------:|:-----------:|:----------------|
+| [Sumerian](languages/sumerian/) | 52.13% | 35.70% | language isolate / cuneiform |
+| [Egyptian](languages/egyptian/) | 34.57% | 33.42% | Afroasiatic / hieroglyphic |
+| [Akkadian](languages/akkadian/) | 36.43% | 27.79% | East Semitic / cuneiform |
+| [Hittite](languages/hittite/) | 40.62% | 35.40% | Indo-European (Anatolian) / cuneiform |
+| [Greek](languages/greek/) | — | — | Indo-European / alphabetic (scaffold complete, first run pending) |
 
-Both alignment targets are accessible via one `SumerianLookup` class (`space="gemma"|"glove"`).
+Both alignment targets are accessible via per-language `Lookup` classes (`space="gemma"|"glove"`).
 
-The substantial leap from the v1 baseline (17.30% top-1) came in two steps: Phase B added whitened EmbeddingGemma as a second target (+2.54pp), and Workstream 2b closed a unicode-normalization gap between ORACC citation forms and the ATF corpus (+32.28pp top-1, a ~4.4× training-anchor multiplier). See the [experiment journal](docs/EXPERIMENT_JOURNAL.md) for the diagnostic methodology that identified the dominant lever.
+For Sumerian, the substantial leap from the v1 baseline (17.30% top-1) came in two steps: Phase B added whitened EmbeddingGemma as a second target (+2.54pp), and Workstream 2b closed a unicode-normalization gap between ORACC citation forms and the ATF corpus (+32.28pp top-1, a ~4.4× training-anchor multiplier). See the [Sumerian experiment journal](languages/sumerian/docs/EXPERIMENT_JOURNAL.md) for the diagnostic methodology.
 
 ### Research progress
 
-Active experiment log: [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md). Recent findings (newest first):
+Active experiment log: [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md). Sumerian-specific historical findings: [`languages/sumerian/docs/EXPERIMENT_JOURNAL.md`](languages/sumerian/docs/EXPERIMENT_JOURNAL.md). Recent findings (newest first):
 
 - **2026-07-06 — Eval integrity: lemma-group split + validation-selected alpha; all prior headline numbers invalidated.** Surface-variant train/test leakage (32–65% of test items had a same-gloss train anchor within edit distance 1) and test-set alpha tuning inflated every slot's accuracy. Fixed across all five language pipelines via a shared union-find group split (64/16/20 train/val/test) with alpha selected on validation. Akkadian rerun as evidence: GloVe 27.79% → 0.09%, whitened-Gemma 36.43% → 0.14% top-1; a three-way diagnostic (44.4% train-set accuracy, exact reproduction of the old number under the old split, 16.3% seen-gloss test rate) confirms the collapse is real zero-shot difficulty, not a bug. Remaining reruns deferred pending an eval redesign (seen/unseen strata, CSLS, restricted candidate vocab, document-level evaluation). See the journal entry for the full writeup.
-- **2026-04-20 — Anomaly Atlas Interpretive Findings:** Standalone ~9,500-word document + PDF with embedded cuneiform font, surfacing 15-20 atlas findings across six themes. See [`docs/anomaly_atlas_findings.md`](docs/anomaly_atlas_findings.md) (markdown) / [`docs/anomaly_atlas_findings.pdf`](docs/anomaly_atlas_findings.pdf) (PDF with cuneiform).
-- **2026-04-19 — Sumerian Cosmogony document:** A methodology-driven ~14,000-word case study on the Anunnaki cosmogonic cycle, using the 52%-top-1 whitened-Gemma alignment for geometric translation of five pivotal terms (`abzu`, `zi`, `nam`, `namtar`, `me`). See [`docs/sumerian_cosmogony.md`](docs/sumerian_cosmogony.md).
+- **2026-05-11 — Greek scaffold (G1–G4): parser, LSJ glosses, clean, anchors, FastText + alignment scripts ready; first run pending eval redesign.** 106,260 anchors, 10.2M-token Diorisis corpus (Homer to 5th c. AD). See [`languages/greek/`](languages/greek/).
+- **2026-05-11 — Hittite v1 shipped:** Gemma top-1 40.62% (pre-fix), beats Akkadian's v1.3 from day one. TLHdig corpus (Zenodo), German glosses translated via multilingual EmbeddingGemma. See [`languages/hittite/docs/EXPERIMENT_JOURNAL.md`](languages/hittite/docs/EXPERIMENT_JOURNAL.md).
+- **2026-05-11 — Akkadian v1.3:** Ridge alpha sweep (+7.41pp top-1, 29.02% → 36.43% Gemma). See [`languages/akkadian/docs/EXPERIMENT_JOURNAL.md`](languages/akkadian/docs/EXPERIMENT_JOURNAL.md).
+- **2026-05-10 — Akkadian v1.1–v1.2:** Gap-closing iterations (+4.91pp + 7.36pp top-1). See slot journal.
+- **2026-05-09 — Akkadian slot v1 shipped:** Third language slot, Gemma top-1 16.75% (pre-fix). See [`languages/akkadian/docs/EXPERIMENT_JOURNAL.md`](languages/akkadian/docs/EXPERIMENT_JOURNAL.md).
+- **2026-04-20 — Anomaly Atlas Interpretive Findings:** Standalone ~9,500-word document + PDF with embedded cuneiform font, surfacing 15-20 atlas findings across six themes. See [`languages/sumerian/docs/anomaly_atlas_findings.md`](languages/sumerian/docs/anomaly_atlas_findings.md) (markdown) / [`languages/sumerian/docs/anomaly_atlas_findings.pdf`](languages/sumerian/docs/anomaly_atlas_findings.pdf) (PDF with cuneiform).
+- **2026-04-19 — Sumerian Cosmogony document:** A methodology-driven ~14,000-word case study on the Anunnaki cosmogonic cycle, using the 52%-top-1 whitened-Gemma alignment for geometric translation of five pivotal terms (`abzu`, `zi`, `nam`, `namtar`, `me`). See [`languages/sumerian/docs/sumerian_cosmogony.md`](languages/sumerian/docs/sumerian_cosmogony.md).
 - **2026-04-19 — Workstream 2b (STRETCH tier shipped):** Normalization fix landed. Whitened-Gemma top-1 **19.85% → 52.13% (+32.28pp)**. Training anchors 1,572 → 6,867. Coverage diagnostic's `normalization_recoverable` bucket cleared from 7,651 to 0. The 2b-pre diagnostic's attribution held to the bit — a ~20-line unicode-normalization fix delivered the largest single top-1 gain in the project's history.
 - **2026-04-19 — Workstream 2b-pre:** Coverage diagnostic attributed 64.85% of the 11,798 `sumerian_vocab_miss` anchors to a simple ASCII-normalization gap between the anchor extractor and the corpus tokenizer (subscripts → ASCII, strip determinative braces, drop hyphens). Inference-based alternatives (FastText subword inference, morpheme composition) scored 10.7% and 1.8% Tier-2 top-5 accuracy respectively — not the next lever to pull.
 - **2026-04-18 — Workstream 2a:** Anchor audit baselined valid-anchor survival at 14.05% (1,951/13,886). 84.96% of all dropout is `sumerian_vocab_miss`; every other bucket combined is under 1%.
@@ -174,54 +177,55 @@ Originated as a port of [heiroglyphy](https://github.com/ebrinz/heiroglyphy) V15
 
 ### Key findings
 
-- **Normalization drift was the dominant blocker.** Workstream 2b found that 64.85% of anchor-dropout was a ~20-line unicode-normalization gap between ORACC citation forms and the ATF corpus (subscripts → ASCII, strip determinatives, drop hyphens). Fixing it 3×-multiplied top-1 on whitened Gemma (19.85% → 52.13%). See [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md).
+- **Normalization drift was the dominant blocker.** Workstream 2b found that 64.85% of anchor-dropout was a ~20-line unicode-normalization gap between ORACC citation forms and the ATF corpus (subscripts → ASCII, strip determinatives, drop hyphens). Fixing it 3×-multiplied top-1 on whitened Gemma (19.85% → 52.13%). See [`languages/sumerian/docs/EXPERIMENT_JOURNAL.md`](languages/sumerian/docs/EXPERIMENT_JOURNAL.md).
 - **Whitening is mandatory for contextual-encoder targets.** BERT-whitening (Su et al. 2021) applied to raw EmbeddingGemma is the difference between an alignment that works and one that fails the baseline.
-- **Atlas-driven anomaly analysis** surfaces specific Sumerian words where the alignment's geometry genuinely diverges from English translation conventions — see [`docs/anomaly_atlas_findings.md`](docs/anomaly_atlas_findings.md) and its [PDF rendering](docs/anomaly_atlas_findings.pdf).
+- **Atlas-driven anomaly analysis** surfaces specific Sumerian words where the alignment's geometry genuinely diverges from English translation conventions — see [`languages/sumerian/docs/anomaly_atlas_findings.md`](languages/sumerian/docs/anomaly_atlas_findings.md) and its [PDF rendering](languages/sumerian/docs/anomaly_atlas_findings.pdf).
 
 ## Project Structure
 
 ```
-cuneiformy/
+hyper-glyphy/
 ├── languages/
-│   └── sumerian/
-│       ├── scripts/       # Numbered pipeline scripts (01-10) + analysis/ + docs/
-│       │   ├── sumerian_normalize.py     # canonical token-normalization module
-│       │   ├── audit_anchors.py          # anchor-survival diagnostic
-│       │   ├── coverage_diagnostic.py    # what-would-each-intervention-recover
-│       │   ├── analysis/                 # cosmogony + anomaly-atlas orchestration
-│       │   └── docs/                     # PDF rendering (pandoc + xelatex + cuneiform font)
-│       ├── data/          # Raw and processed data (gitignored)
-│       ├── models/        # Trained FastText caches (gitignored)
-│       ├── results/       # Audit + diagnostic reports (dated, committed)
-│       ├── final_output/  # Production aligned vectors + SumerianLookup API
-│       └── tests/         # Sumerian-specific unit + integration tests
+│   ├── sumerian/          # language isolate / cuneiform — shipped (pre-fix)
+│   │   ├── scripts/       # Pipeline 01-10 + analysis/ + normalization + audit tools
+│   │   ├── docs/          # EXPERIMENT_JOURNAL, anomaly atlas, cosmogony (Sumerian-specific)
+│   │   ├── data/          # Raw and processed data (gitignored)
+│   │   ├── models/        # Trained FastText caches (gitignored)
+│   │   ├── results/       # Audit + diagnostic reports (committed)
+│   │   ├── final_output/  # Production aligned vectors + SumerianLookup API
+│   │   └── tests/
+│   ├── egyptian/          # Afroasiatic / hieroglyphic — shipped (pre-fix)
+│   ├── akkadian/          # East Semitic / cuneiform — shipped (pre-fix)
+│   ├── hittite/           # Indo-European (Anatolian) / cuneiform — shipped (pre-fix)
+│   └── greek/             # Indo-European / alphabetic — scaffold complete, run pending
 ├── framework/
 │   └── analysis/          # Language-agnostic anomaly atlas + analysis lenses
 ├── shared/
 │   ├── scripts/           # English target embedding tools (Gemma, GloVe, whitening)
+│   │   └── anchor_split.py  # Union-find lemma-group split (post eval-integrity fix)
 │   ├── models/            # Whitened-Gemma caches (gitignored)
-│   └── tests/             # Shared script tests
-└── docs/                  # Specs, plans, journal, roadmap, research artifacts
-    ├── ROADMAP.md                    # queued workstreams (see below)
-    ├── EXPERIMENT_JOURNAL.md         # dated log of experiments + findings
-    ├── sumerian_cosmogony.md         # Phase 3 narrative extraction (Anunnaki cosmogony)
-    └── anomaly_atlas_findings.md     # thematic interpretation of the atlas
+│   └── tests/
+└── docs/                  # Repo-wide journal, roadmap, research artifacts
+    ├── ROADMAP.md
+    ├── EXPERIMENT_JOURNAL.md   # Cross-language experiment log (newest first)
+    └── RESEARCH_VISION.md
 ```
 
 ## Roadmap
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for queued workstreams.
 
-### Currently shipped
+### Currently shipped (all numbers pre-fix — see Results banner above)
 
-| Slot | Whitened-Gemma top-1 | Family / Script |
-|------|:---:|:---|
-| [Sumerian](languages/sumerian/) | 52.13% | language isolate / cuneiform |
-| [Egyptian](languages/egyptian/) | 32.35% (GloVe) | Afroasiatic / hieroglyphic |
-| [Akkadian](languages/akkadian/) | 36.43% | East Semitic / cuneiform |
-| [Hittite](languages/hittite/) | 40.62% | Indo-European (Anatolian) / cuneiform |
+| Slot | Gemma top-1 | GloVe top-1 | Family / Script |
+|------|:-----------:|:-----------:|:----------------|
+| [Sumerian](languages/sumerian/) | 52.13% | 35.70% | language isolate / cuneiform |
+| [Egyptian](languages/egyptian/) | 34.57% | 33.42% | Afroasiatic / hieroglyphic |
+| [Akkadian](languages/akkadian/) | 36.43% | 27.79% | East Semitic / cuneiform |
+| [Hittite](languages/hittite/) | 40.62% | 35.40% | Indo-European (Anatolian) / cuneiform |
+| [Greek](languages/greek/) | — | — | Indo-European / alphabetic — scaffold complete, first run pending |
 
-### Stretch goals — additional language slots
+### Future language slots
 
 Targeting a long-term roster of cross-comparable ancient-language alignments, each
 using the same dual-target Ridge pipeline (GloVe 300d + whitened-Gemma 768d):

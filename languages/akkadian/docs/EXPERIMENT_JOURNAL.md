@@ -1,5 +1,11 @@
 # Akkadian Experiment Journal
 
+> **2026-07-06 — All accuracy numbers in this journal are pre-fix (leaked split).**
+> See the repo-wide journal ([`docs/EXPERIMENT_JOURNAL.md`](../../../../docs/EXPERIMENT_JOURNAL.md),
+> 2026-07-06 entry) for the full eval-integrity writeup. The Akkadian rerun under the
+> leakage-free split (GloVe 0.09%, Gemma 0.14% top-1) is the reference honest number;
+> all numbers in this historical log reflect the old leaked-pair split.
+
 ## 2026-05-11 — v1.3: Ridge alpha sweep (+7.41pp top-1, single hyperparameter)
 
 After the v1.2 plateau (29.02% top-1) we ran an alpha sweep on the whitened-Gemma

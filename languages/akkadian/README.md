@@ -5,14 +5,19 @@ OB Akkadian aligned to whitened-EmbeddingGemma (768d, primary) and GloVe
 
 ## Current results (v1.3)
 
+> **Pre-fix (leaked split)** — these numbers are invalidated as surface-variant leakage
+> artifacts per the 2026-07-06 eval-integrity audit. Akkadian rerun under the
+> leakage-free split: Gemma 0.14%, GloVe 0.09% top-1. Reruns of other metrics
+> deferred pending eval redesign. See [`docs/EXPERIMENT_JOURNAL.md`](../../../../docs/EXPERIMENT_JOURNAL.md).
+
 | Metric | Whitened-Gemma 768d | GloVe 300d |
 |--------|:---:|:---:|
 | Top-1  | **36.43%** | 27.79% |
 | Top-5  | 59.18% | 43.23% |
 | Top-10 | **66.51%** | 47.52% |
 
-Top-10 (66.51%) now exceeds Sumerian's (65.99%); top-1 gap to Sumerian
-(36.43% vs 52.13%) is the remaining alignment-precision frontier.
+Pre-fix: top-10 (66.51%) exceeded Sumerian's (65.99%); top-1 gap to Sumerian
+(36.43% vs 52.13%) was the remaining alignment-precision frontier.
 
 Corpus 3.0M tokens, FastText vocab 45,769, ORACC anchor pool 24,415,
 Ridge alpha 0.01 (Gemma) / 0.001 (GloVe). See
@@ -24,7 +29,8 @@ and the v1.3 alpha-sweep finding (+7.41pp Gemma top-1 from one constant change).
 
 ```bash
 # Scrape (network)
-python scripts/01_scrape_oracc_ob.py
+python scripts/01_scrape_oracc_ob.py        # OB ORACC projects (~2M tokens)
+python scripts/01b_scrape_oracc_sb.py       # Standard Babylonian supplement (~1M tokens; needed for 3.0M corpus)
 python scripts/02_scrape_oracc_letters.py
 python scripts/03_scrape_dcclt.py
 

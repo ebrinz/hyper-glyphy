@@ -13,17 +13,21 @@ two notable deltas:
 
 ## Current results (v1 ship)
 
+> **Pre-fix (leaked split)** — these numbers are invalidated as surface-variant leakage
+> artifacts per the 2026-07-06 eval-integrity audit. Reruns deferred pending eval
+> redesign (Hittite also has ~11% residual leak from TLHdig citation-form spelling
+> variants that need cf-variant merging). See
+> [`docs/EXPERIMENT_JOURNAL.md`](../../../../docs/EXPERIMENT_JOURNAL.md).
+
 | Metric | Whitened-Gemma 768d | GloVe 300d |
 |--------|:---:|:---:|
 | Top-1  | **40.62%** | 35.40% |
 | Top-5  | 50.99% | 41.88% |
 | Top-10 | 55.02% | 43.20% |
 
-Top-1 (40.62%) beats Akkadian's v1.3 (36.43%) from day one, despite ~20% the
-corpus. GloVe top-1 (35.40%) matches Sumerian (35.70%) and beats Egyptian.
-See [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md) for the full
-writeup including the German→English translation strategy and remaining
-levers.
+Pre-fix: top-1 (40.62%) beat Akkadian's v1.3 (36.43%) from day one, despite ~20%
+the corpus. See [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md) for the
+full writeup including the German→English translation strategy and remaining levers.
 
 ## Quick start
 
@@ -45,11 +49,8 @@ python scripts/06_extract_anchors.py
 # Train + align
 python scripts/07_train_fasttext.py
 python scripts/08_fuse_embeddings.py
-python scripts/09_align_and_evaluate.py             # GloVe target
-python scripts/09b_align_gemma.py --mode whitened   # Gemma target
-
-# Optional: sweep Ridge alpha (recommended at v1)
-python scripts/ridge_alpha_sweep.py
+python scripts/09_align_and_evaluate.py             # GloVe target (alpha selected on val split)
+python scripts/09b_align_gemma.py --mode whitened   # Gemma target (alpha selected on val split)
 
 # Export
 python scripts/10_export_production.py
@@ -78,7 +79,9 @@ No formal design spec (used the Akkadian framework directly with deltas
 captured in the journal). Lessons from Akkadian's 7-iteration arc baked
 into v1:
 
-- Ridge α sweep on day one (Akkadian L7 lesson: +7.41pp from one constant)
+- Ridge α sweep on day one (Akkadian L7 lesson: +7.41pp from one constant).
+  Note: `ridge_alpha_sweep.py` was retired in the 2026-07-06 eval-integrity fix;
+  alpha selection is now inline in `09`/`09b` via the validation split.
 - Subword inference with train-only OOV partition (Akkadian L5-refined)
 - Lemma-surface expansion in anchor extraction (Akkadian L4)
 - No speculative dictionary fetcher (Akkadian L6b falsification)
