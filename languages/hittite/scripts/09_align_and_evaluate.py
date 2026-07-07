@@ -2,24 +2,36 @@
 Ridge Alignment & Evaluation: Map Sumerian embeddings to GloVe English space.
 
 Pipeline:
-  1. Load fused 1536d Sumerian vectors
+  1. Load fused 1536d Hittite vectors
   2. Load GloVe 300d English vectors
   3. Load anchor pairs
-  4. Build training data (only anchors present in both vocabs)
-  5. 80/20 train/test split (random_state=42)
-  6. Train Ridge regression (alpha=0.001)
-  7. Evaluate Top-1/5/10 accuracy on test set
+  4. Lemma-group 64/16/20 train/val/test split (no lemma or surface spans partitions)
+  5. Select Ridge alpha by top-1 on the validation set
+  6. Retrain at the chosen alpha on train+val
+  7. Evaluate Top-1/5/10 accuracy on the held-out test set
+
+OOV anchors (FastText subword inference) are training-only; validation and
+test contain in-vocab anchors exclusively.
 """
 import json
 import numpy as np
 from pathlib import Path
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
 from scipy.spatial.distance import cdist
+import sys
+
+_ROOT = Path(__file__).parent.parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
 DATA_PROCESSED = Path(__file__).parent.parent / "data" / "processed"
 RESULTS_DIR = Path(__file__).parent.parent / "results"
+
+SURFACE_KEY = "hittite"
+ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
 
 
 def build_training_data(
@@ -30,7 +42,7 @@ def build_training_data(
     eng_vectors: np.ndarray,
     fasttext_model=None,
 ) -> tuple[np.ndarray, np.ndarray, list[dict]]:
-    """Build aligned X (Akkadian) and Y (English) matrices from anchor pairs.
+    """Build aligned X (Hittite) and Y (English) matrices from anchor pairs.
 
     L5: when fasttext_model is provided, OOV anchors fall back to FastText's
     subword inference. The inferred 768d vector is zero-padded to match the
@@ -114,6 +126,31 @@ def evaluate_alignment(
     return results
 
 
+def select_alpha(
+    X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors,
+    alphas, predict_transform=None,
+):
+    """Pick the Ridge alpha with the best top-1 on the validation set.
+
+    predict_transform: optional callable applied to raw predictions before
+    evaluation (Egyptian's PCA path lifts 256d back to 768d with it).
+    Returns (best_alpha, sweep_records).
+    """
+    sweep = []
+    best_alpha, best_top1 = None, -1.0
+    for alpha in alphas:
+        model = train_ridge(X_train, Y_train, alpha=alpha)
+        Y_pred = model.predict(X_val)
+        if predict_transform is not None:
+            Y_pred = predict_transform(Y_pred)
+        acc = evaluate_alignment(Y_pred, val_english, eng_vocab_list, eng_vectors)
+        sweep.append({"alpha": alpha, "accuracy": acc})
+        print(f"  alpha={alpha:<10g} val top1={acc['top1']:.2f}%")
+        if acc["top1"] > best_top1:
+            best_alpha, best_top1 = alpha, acc["top1"]
+    return best_alpha, sweep
+
+
 def main():
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -151,43 +188,49 @@ def main():
     print(f"Loading FastText model from {ft_path} (for OOV subword inference)")
     ft_model = FastText.load(str(ft_path))
 
-    X, Y, valid_anchors = build_training_data(
-        anchors, sum_vocab, sum_vectors, eng_vocab, glove_vectors, fasttext_model=ft_model
+    train_anchors, val_anchors, test_anchors = group_split(
+        anchors, surface_key=SURFACE_KEY
     )
-    print(f"Valid anchors: {len(valid_anchors)} / {len(anchors)} ({len(valid_anchors)/len(anchors)*100:.1f}%)")
-
-    # L5-refined: partition valid anchors by subword_inferred flag. Only in-vocab
-    # anchors go into the test set; OOV-inferred anchors are training-only.
-    in_vocab_mask = np.array([not a.get("subword_inferred") for a in valid_anchors])
-    X_in = X[in_vocab_mask]
-    Y_in = Y[in_vocab_mask]
-    anchors_in = [a for a, m in zip(valid_anchors, in_vocab_mask) if m]
-    X_oov = X[~in_vocab_mask]
-    Y_oov = Y[~in_vocab_mask]
-    anchors_oov = [a for a, m in zip(valid_anchors, in_vocab_mask) if not m]
-
-    X_in_train, X_test, Y_in_train, Y_test, anchors_in_train, anchors_test = train_test_split(
-        X_in, Y_in, anchors_in, test_size=0.2, random_state=42
-    )
-
-    # Combine in-vocab train + all OOV anchors as training data
-    X_train = np.concatenate([X_in_train, X_oov], axis=0) if len(X_oov) else X_in_train
-    Y_train = np.concatenate([Y_in_train, Y_oov], axis=0) if len(Y_oov) else Y_in_train
-    anchors_train = anchors_in_train + anchors_oov
-
     print(
-        f"In-vocab anchors: {len(anchors_in)} (split into "
-        f"{len(anchors_in_train)} train + {len(anchors_test)} test). "
-        f"OOV anchors (subword-inferred): {len(anchors_oov)} (added to train only)."
+        f"Group split (seed={SEED}): {len(train_anchors)} train / "
+        f"{len(val_anchors)} val / {len(test_anchors)} test raw anchors"
     )
-    print(f"Train: {len(X_train)}, Test: {len(X_test)}")
 
-    print("Training Ridge regression (alpha=0.001)...")
-    model = train_ridge(X_train, Y_train, alpha=0.001)  # L7: matches Sumerian's GloVe optimum
+    # OOV subword inference is training-only: val/test are built WITHOUT the
+    # FastText fallback so they stay in-vocab.
+    X_train, Y_train, train_valid = build_training_data(
+        train_anchors, sum_vocab, sum_vectors, eng_vocab, glove_vectors,
+        fasttext_model=ft_model,
+    )
+    X_val, Y_val, val_valid = build_training_data(
+        val_anchors, sum_vocab, sum_vectors, eng_vocab, glove_vectors
+    )
+    X_test, Y_test, test_valid = build_training_data(
+        test_anchors, sum_vocab, sum_vectors, eng_vocab, glove_vectors
+    )
+    n_oov_train = sum(1 for a in train_valid if a.get("subword_inferred"))
+    n_valid = len(train_valid) + len(val_valid) + len(test_valid)
+    print(
+        f"Valid anchors: {n_valid} / {len(anchors)} — "
+        f"{len(train_valid)} train ({n_oov_train} OOV-inferred) / "
+        f"{len(val_valid)} val / {len(test_valid)} test"
+    )
+
+    print("Selecting alpha on validation...")
+    val_english = [a["english"] for a in val_valid]
+    best_alpha, sweep = select_alpha(
+        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, ALPHAS
+    )
+    print(f"Selected alpha={best_alpha}")
+
+    X_fit = np.concatenate([X_train, X_val], axis=0)
+    Y_fit = np.concatenate([Y_train, Y_val], axis=0)
+    print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
+    model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
     Y_pred = model.predict(X_test)
 
-    test_english = [a["english"] for a in anchors_test]
+    test_english = [a["english"] for a in test_valid]
     results = evaluate_alignment(Y_pred, test_english, glove_vocab, glove_vectors)
 
     print(f"\n=== RESULTS ===")
@@ -199,14 +242,26 @@ def main():
         "accuracy": results,
         "config": {
             "alignment": "Ridge",
-            "alpha": 0.001,
-            "train_size": len(X_train),
+            "alpha": best_alpha,
+            "alpha_sweep_val": sweep,
+            "train_size": len(X_fit),
             "test_size": len(X_test),
-            "valid_anchors": len(valid_anchors),
+            "valid_anchors": n_valid,
             "total_anchors": len(anchors),
             "sumerian_vocab": len(sum_vocab),
-            "fused_dim": sum_vectors.shape[1],
-            "glove_dim": glove_vectors.shape[1],
+            "fused_dim": int(sum_vectors.shape[1]),
+            "glove_dim": int(glove_vectors.shape[1]),
+            "split": {
+                "method": "lemma-group",
+                "seed": SEED,
+                "val_size": VAL_SIZE,
+                "test_size": TEST_SIZE,
+                "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                        "test": len(test_anchors)},
+                "valid": {"train": len(train_valid), "val": len(val_valid),
+                          "test": len(test_valid)},
+                "oov_train_only": n_oov_train,
+            },
         },
     }
 

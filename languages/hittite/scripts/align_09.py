@@ -11,3 +11,4 @@ _spec.loader.exec_module(_mod)
 build_training_data = _mod.build_training_data
 train_ridge = _mod.train_ridge
 evaluate_alignment = _mod.evaluate_alignment
+select_alpha = _mod.select_alpha
