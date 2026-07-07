@@ -5,8 +5,8 @@ Pipeline:
   1. Load fused 1536d Egyptian vectors
   2. Load GloVe 300d English vectors
   3. Load anchor pairs
-  4. Gloss-group 64/16/20 train/val/test split
-  5. Select Ridge alpha by top-1 on the validation set
+  4. Surface-casefold-group 64/16/20 train/val/test split
+  5. Select Ridge alpha by top-1 CSLS on the validation set
   6. Retrain at the chosen alpha on train+val
   7. Evaluate Top-1/5/10 accuracy on the held-out test set
 """
@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 from sklearn.linear_model import Ridge
 from scipy.spatial.distance import cdist
+from tqdm import tqdm
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 _LANG_ROOT = Path(__file__).parent.parent
@@ -25,6 +26,13 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
+from shared.scripts.eval_suite import (
+    CAND_SIZE,
+    save_artifacts,
+    score_suite,
+    stratify,
+    val_top1_csls,
+)
 
 MODELS_DIR = _LANG_ROOT / "models"
 DATA_PROCESSED = _LANG_ROOT / "data" / "processed"
@@ -33,6 +41,21 @@ GLOVE_PATH = _REPO_ROOT / "languages" / "sumerian" / "data" / "processed" / "glo
 
 SURFACE_KEY = "egyptian_raw"
 ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
+
+STOPWORD_GLOSSES = {
+    "a", "an", "the", "to", "of", "in", "on", "at", "by", "for", "with",
+    "not", "no", "be", "is", "are", "was", "were", "as", "or", "and",
+    "but", "if", "so", "do", "did", "have", "has", "had", "from", "into",
+    "out", "up", "down", "over", "under", "between", "during", "before",
+    "after", "above", "below", "any", "some", "all", "each", "every",
+    "one", "two", "three", "four", "five", "des", "de",
+}
+
+
+def filter_stopword_glosses(anchors):
+    """Drop anchors whose gloss is a pure function word. Returns (kept, n_dropped)."""
+    kept = [a for a in anchors if a["english"] not in STOPWORD_GLOSSES]
+    return kept, len(anchors) - len(kept)
 
 
 def build_training_data(
@@ -47,12 +70,19 @@ def build_training_data(
     Y_list = []
     valid = []
 
+    eg_vocab_cf = {}
+    for w, i in eg_vocab.items():
+        eg_vocab_cf.setdefault(w.casefold(), i)
+
     for anchor in anchors:
         e_word = anchor.get("egyptian_raw", anchor.get("egyptian", ""))
         eng_word = anchor["english"]
 
-        if e_word in eg_vocab and eng_word in eng_vocab:
-            X_list.append(eg_vectors[eg_vocab[e_word]])
+        idx = eg_vocab.get(e_word)
+        if idx is None:
+            idx = eg_vocab_cf.get(e_word.casefold())
+        if idx is not None and eng_word in eng_vocab:
+            X_list.append(eg_vectors[idx])
             Y_list.append(eng_vectors[eng_vocab[eng_word]])
             valid.append(anchor)
 
@@ -105,7 +135,7 @@ def select_alpha(
     X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors,
     alphas, predict_transform=None,
 ):
-    """Pick the Ridge alpha with the best top-1 on the validation set.
+    """Pick the Ridge alpha with the best top-1 CSLS on the validation set.
 
     predict_transform: optional callable applied to raw predictions before
     evaluation (Egyptian's PCA path lifts 256d back to 768d with it).
@@ -113,20 +143,25 @@ def select_alpha(
     """
     sweep = []
     best_alpha, best_top1 = None, -1.0
-    for alpha in alphas:
+    for alpha in tqdm(alphas, desc="alpha sweep", file=sys.stderr,
+                      disable=not sys.stderr.isatty()):
         model = train_ridge(X_train, Y_train, alpha=alpha)
         Y_pred = model.predict(X_val)
         if predict_transform is not None:
             Y_pred = predict_transform(Y_pred)
-        acc = evaluate_alignment(Y_pred, val_english, eng_vocab_list, eng_vectors)
-        sweep.append({"alpha": alpha, "accuracy": acc})
-        print(f"  alpha={alpha:<10g} val top1={acc['top1']:.2f}%")
-        if acc["top1"] > best_top1:
-            best_alpha, best_top1 = alpha, acc["top1"]
+        top1 = val_top1_csls(
+            Y_pred, val_english, eng_vectors[:CAND_SIZE], eng_vocab_list[:CAND_SIZE]
+        )
+        sweep.append({"alpha": alpha, "val_top1_csls_exact": top1})
+        print(f"  alpha={alpha:<10g} val top1 (CSLS/50k)={top1:.2f}%")
+        if top1 > best_top1:
+            best_alpha, best_top1 = alpha, top1
     return best_alpha, sweep
 
 
 def main():
+    import os
+    alphas = [0.01] if os.environ.get("EVAL_SMOKE") else ALPHAS
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     fused_path = MODELS_DIR / "fused_embeddings_1536d.npz"
@@ -156,8 +191,11 @@ def main():
         anchors = json.load(f)
     print(f"Loaded {len(anchors)} anchors")
 
+    anchors, n_stopword_dropped = filter_stopword_glosses(anchors)
+    print(f"Stopword-gloss filter: dropped {n_stopword_dropped}, kept {len(anchors)}")
+
     train_anchors, val_anchors, test_anchors = group_split(
-        anchors, surface_key=SURFACE_KEY
+        anchors, surface_key=SURFACE_KEY, fallback="surface_casefold"
     )
     print(
         f"Group split (seed={SEED}): {len(train_anchors)} train / "
@@ -182,7 +220,7 @@ def main():
     print("Selecting alpha on validation...")
     val_english = [a["english"] for a in val_valid]
     best_alpha, sweep = select_alpha(
-        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, ALPHAS
+        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, alphas
     )
     print(f"Selected alpha={best_alpha}")
 
@@ -191,22 +229,76 @@ def main():
     print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
     model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
-    Y_pred = model.predict(X_test)
+    # Artifact bundle: predictions in full target space + strata metadata.
+    rng = np.random.RandomState(SEED)
+    non_oov_train = list(enumerate(train_valid))
+    sample_idx = rng.choice(
+        len(non_oov_train), size=min(1000, len(non_oov_train)), replace=False
+    )
+    train_sample = [non_oov_train[i] for i in sample_idx]
+    Q_train = model.predict(X_train[[i for i, _ in train_sample]])
+    Q_val = model.predict(X_val)
+    Q_test = model.predict(X_test)
 
-    test_english = [a["english"] for a in test_valid]
-    results = evaluate_alignment(Y_pred, test_english, glove_vocab, glove_vectors)
+    trainval_golds = {a["english"] for a in train_valid} | {
+        a["english"] for a in val_valid
+    }
+    test_strata = stratify([a["english"] for a in test_valid], trainval_golds)
 
-    print(f"\n=== RESULTS (GloVe target) ===")
-    print(f"Top-1 Accuracy:  {results['top1']:.2f}%")
-    print(f"Top-5 Accuracy:  {results['top5']:.2f}%")
-    print(f"Top-10 Accuracy: {results['top10']:.2f}%")
+    config = {
+        "target": "glove",
+        "target_cache": str(GLOVE_PATH),
+        "alpha": best_alpha,
+        "alpha_sweep_val": sweep,
+        "seed": SEED,
+        "candidate_vocab_size": CAND_SIZE,
+        "split": {
+            "method": "surface-casefold-group",
+            "seed": SEED,
+            "val_size": VAL_SIZE,
+            "test_size": TEST_SIZE,
+            "near_surface_edges": True,
+            "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                    "test": len(test_anchors)},
+            "valid": {"train": len(train_valid), "val": len(val_valid),
+                      "test": len(test_valid)},
+        },
+        "stopword_glosses_dropped": n_stopword_dropped,
+    }
+    prefix = str(RESULTS_DIR / "eval_artifacts_glove")
+    save_artifacts(
+        prefix,
+        coef=model.coef_, intercept=model.intercept_,
+        Q_train=Q_train, Q_val=Q_val, Q_test=Q_test,
+        train_sample=[{"surface": a[SURFACE_KEY], "gold": a["english"]}
+                      for _, a in train_sample],
+        val=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in val_valid],
+        test=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in test_valid],
+        test_strata=test_strata,
+        config=config,
+    )
+    print(f"Artifacts saved to {prefix}.npz/.json")
 
+    cand_vectors = glove_vectors[:CAND_SIZE]
+    cand_vocab = glove_vocab[:CAND_SIZE]
+    from shared.scripts.eval_suite import load_artifacts
+
+    suite = score_suite(load_artifacts(prefix), cand_vectors, cand_vocab)
+
+    print("\n=== METRIC SUITE (CSLS, 50k candidates, exact/syn) ===")
+    for regime in ("dictionary_in_sample", "interpolation", "zero_shot", "test_combined"):
+        r = suite[regime]
+        print(f"{regime:<22} n={r['n']:>6} "
+              + "  ".join(f"top{k}={r[f'top{k}']['exact']:.2f}/{r[f'top{k}']['syn']:.2f}"
+                          for k in (1, 5, 10)))
+
+    combined = suite["test_combined"]
     full_results = {
-        "accuracy": results,
-        "config": {
-            "alignment": "Ridge",
-            "alpha": best_alpha,
-            "alpha_sweep_val": sweep,
+        # Legacy key: combined-strata test CSLS/restricted EXACT top-k, so
+        # 10_export_production.py keeps reading the same shape.
+        "accuracy": {f"top{k}": combined[f"top{k}"]["exact"] for k in (1, 5, 10)},
+        "metric_suite": suite,
+        "config": config | {
             "train_size": len(X_fit),
             "test_size": len(X_test),
             "valid_anchors": n_valid,
@@ -214,16 +306,6 @@ def main():
             "egyptian_vocab": len(eg_vocab),
             "fused_dim": int(eg_vectors.shape[1]),
             "glove_dim": int(glove_vectors.shape[1]),
-            "split": {
-                "method": "gloss-group",
-                "seed": SEED,
-                "val_size": VAL_SIZE,
-                "test_size": TEST_SIZE,
-                "raw": {"train": len(train_anchors), "val": len(val_anchors),
-                        "test": len(test_anchors)},
-                "valid": {"train": len(train_valid), "val": len(val_valid),
-                          "test": len(test_valid)},
-            },
         },
     }
 

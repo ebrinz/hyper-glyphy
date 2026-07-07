@@ -12,3 +12,5 @@ build_training_data = _mod.build_training_data
 train_ridge = _mod.train_ridge
 evaluate_alignment = _mod.evaluate_alignment
 select_alpha = _mod.select_alpha
+filter_stopword_glosses = _mod.filter_stopword_glosses
+val_top1_csls = _mod.val_top1_csls if hasattr(_mod, "val_top1_csls") else None

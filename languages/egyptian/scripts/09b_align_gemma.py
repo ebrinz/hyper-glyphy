@@ -10,7 +10,9 @@ Reuses helpers from align_09 for training and evaluation.
 import json
 import sys
 from pathlib import Path
+from tqdm import tqdm  # noqa: F401 — canonical template; select_alpha uses it via align_09
 
+# Ensure repo root is importable when invoked directly (pytest.ini only affects pytest).
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
@@ -18,14 +20,21 @@ if str(_REPO_ROOT) not in sys.path:
 import numpy as np
 from sklearn.decomposition import PCA
 
+from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
+from shared.scripts.eval_suite import (
+    CAND_SIZE,
+    save_artifacts,
+    score_suite,
+    stratify,
+    val_top1_csls,  # noqa: F401 — used inside imported select_alpha
+)
 from languages.egyptian.scripts.align_09 import (
     build_training_data,
     train_ridge,
     evaluate_alignment,
     select_alpha,
+    filter_stopword_glosses,
 )
-
-from shared.scripts.anchor_split import group_split, SEED, TEST_SIZE, VAL_SIZE
 
 _LANG_ROOT = Path(__file__).parent.parent
 MODELS_DIR = _LANG_ROOT / "models"
@@ -45,6 +54,8 @@ ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
 
 
 def main():
+    import os
+    alphas = [0.01] if os.environ.get("EVAL_SMOKE") else ALPHAS
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     if not ENGLISH_GEMMA_PATH.exists():
@@ -82,8 +93,11 @@ def main():
         anchors = json.load(f)
     print(f"Loaded {len(anchors)} anchors")
 
+    anchors, n_stopword_dropped = filter_stopword_glosses(anchors)
+    print(f"Stopword-gloss filter: dropped {n_stopword_dropped}, kept {len(anchors)}")
+
     train_anchors, val_anchors, test_anchors = group_split(
-        anchors, surface_key=SURFACE_KEY
+        anchors, surface_key=SURFACE_KEY, fallback="surface_casefold"
     )
     print(
         f"Group split (seed={SEED}): {len(train_anchors)} train / "
@@ -110,7 +124,7 @@ def main():
     val_english = [a["english"] for a in val_valid]
     best_alpha, sweep = select_alpha(
         X_train, pca.transform(Yf_train), X_val, val_english,
-        eng_vocab_list, eng_vectors, ALPHAS,
+        eng_vocab_list, eng_vectors, alphas,
         predict_transform=pca.inverse_transform,
     )
     print(f"Selected alpha={best_alpha}")
@@ -120,42 +134,76 @@ def main():
     print(f"Retraining on train+val ({len(X_fit)}) at alpha={best_alpha}...")
     model = train_ridge(X_fit, Y_fit, alpha=best_alpha)
 
-    Y_pred = pca.inverse_transform(model.predict(X_test))
-    test_english = [a["english"] for a in test_valid]
-    results = evaluate_alignment(Y_pred, test_english, eng_vocab_list, eng_vectors)
+    # Artifact bundle: predictions lifted to full 768d via pca.inverse_transform.
+    rng = np.random.RandomState(SEED)
+    non_oov_train = list(enumerate(train_valid))
+    sample_idx = rng.choice(
+        len(non_oov_train), size=min(1000, len(non_oov_train)), replace=False
+    )
+    train_sample = [non_oov_train[i] for i in sample_idx]
+    Q_train = pca.inverse_transform(model.predict(X_train[[i for i, _ in train_sample]]))
+    Q_val = pca.inverse_transform(model.predict(X_val))
+    Q_test = pca.inverse_transform(model.predict(X_test))
 
-    baseline = None
-    if GLOVE_BASELINE_PATH.exists():
-        with open(GLOVE_BASELINE_PATH) as f:
-            baseline = json.load(f).get("accuracy", {})
+    trainval_golds = {a["english"] for a in train_valid} | {
+        a["english"] for a in val_valid
+    }
+    test_strata = stratify([a["english"] for a in test_valid], trainval_golds)
 
-    print(f"\n=== RESULTS (Gemma target, PCA-{PCA_COMPONENTS}) ===")
-    for k_str in ("top1", "top5", "top10"):
-        gemma_val = results[k_str]
-        if baseline and k_str in baseline:
-            delta = gemma_val - baseline[k_str]
-            print(
-                f"{k_str.upper():<6} Gemma {gemma_val:6.2f}%  "
-                f"GloVe {baseline[k_str]:6.2f}%  "
-                f"delta {delta:+.2f}pp"
-            )
-        else:
-            print(f"{k_str.upper():<6} Gemma {gemma_val:6.2f}%")
+    config = {
+        "target": "gemma",
+        "target_cache": str(ENGLISH_GEMMA_PATH),
+        "alpha": best_alpha,
+        "alpha_sweep_val": sweep,
+        "seed": SEED,
+        "candidate_vocab_size": CAND_SIZE,
+        "split": {
+            "method": "surface-casefold-group",
+            "seed": SEED,
+            "val_size": VAL_SIZE,
+            "test_size": TEST_SIZE,
+            "near_surface_edges": True,
+            "raw": {"train": len(train_anchors), "val": len(val_anchors),
+                    "test": len(test_anchors)},
+            "valid": {"train": len(train_valid), "val": len(val_valid),
+                      "test": len(test_valid)},
+        },
+        "stopword_glosses_dropped": n_stopword_dropped,
+    }
+    prefix = str(RESULTS_DIR / "eval_artifacts_gemma")
+    save_artifacts(
+        prefix,
+        coef=model.coef_, intercept=model.intercept_,
+        Q_train=Q_train, Q_val=Q_val, Q_test=Q_test,
+        train_sample=[{"surface": a[SURFACE_KEY], "gold": a["english"]}
+                      for _, a in train_sample],
+        val=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in val_valid],
+        test=[{"surface": a[SURFACE_KEY], "gold": a["english"]} for a in test_valid],
+        test_strata=test_strata,
+        config=config,
+    )
+    print(f"Artifacts saved to {prefix}.npz/.json")
 
+    cand_vectors = eng_vectors[:CAND_SIZE]
+    cand_vocab = eng_vocab_list[:CAND_SIZE]
+    from shared.scripts.eval_suite import load_artifacts
+
+    suite = score_suite(load_artifacts(prefix), cand_vectors, cand_vocab)
+
+    print("\n=== METRIC SUITE (CSLS, 50k candidates, exact/syn) ===")
+    for regime in ("dictionary_in_sample", "interpolation", "zero_shot", "test_combined"):
+        r = suite[regime]
+        print(f"{regime:<22} n={r['n']:>6} "
+              + "  ".join(f"top{k}={r[f'top{k}']['exact']:.2f}/{r[f'top{k}']['syn']:.2f}"
+                          for k in (1, 5, 10)))
+
+    combined = suite["test_combined"]
     full_results = {
-        "accuracy": results,
-        "baseline_glove": baseline,
-        "deltas_vs_glove": (
-            {k: results[k] - baseline[k] for k in results if k in baseline}
-            if baseline
-            else None
-        ),
-        "config": {
-            "alignment": "PCA-Ridge",
-            "alpha": best_alpha,
-            "alpha_sweep_val": sweep,
-            "pca_components": PCA_COMPONENTS,
-            "pca_variance_retained": round(float(variance_kept), 2),
+        # Legacy key: combined-strata test CSLS/restricted EXACT top-k, so
+        # 10_export_production.py keeps reading the same shape.
+        "accuracy": {f"top{k}": combined[f"top{k}"]["exact"] for k in (1, 5, 10)},
+        "metric_suite": suite,
+        "config": config | {
             "train_size": len(X_fit),
             "test_size_count": len(X_test),
             "valid_anchors": n_valid,
@@ -165,20 +213,38 @@ def main():
             "fused_dim": int(eg_vectors.shape[1]),
             "target_dim": EXPECTED_TARGET_DIM,
             "reduced_dim": PCA_COMPONENTS,
+            "pca_components": PCA_COMPONENTS,
+            "pca_variance_retained": round(float(variance_kept), 2),
             "gemma_model": gemma_model,
             "gloss_hit_rate": gloss_hit_rate,
-            "split": {
-                "method": "gloss-group",
-                "seed": SEED,
-                "val_size": VAL_SIZE,
-                "test_size": TEST_SIZE,
-                "raw": {"train": len(train_anchors), "val": len(val_anchors),
-                        "test": len(test_anchors)},
-                "valid": {"train": len(train_valid), "val": len(val_valid),
-                          "test": len(test_valid)},
-            },
         },
     }
+
+    baseline = None
+    if GLOVE_BASELINE_PATH.exists():
+        with open(GLOVE_BASELINE_PATH) as f:
+            baseline = json.load(f).get("accuracy", {})
+
+    full_results["baseline_glove"] = baseline
+    full_results["deltas_vs_glove"] = (
+        {k: full_results["accuracy"][k] - baseline[k]
+         for k in full_results["accuracy"] if k in baseline}
+        if baseline
+        else None
+    )
+
+    print(f"\n=== RESULTS (Gemma target, PCA-{PCA_COMPONENTS}) ===")
+    for k_str in ("top1", "top5", "top10"):
+        gemma_val = full_results["accuracy"][k_str]
+        if baseline and k_str in baseline:
+            delta = gemma_val - baseline[k_str]
+            print(
+                f"{k_str.upper():<6} Gemma {gemma_val:6.2f}%  "
+                f"GloVe {baseline[k_str]:6.2f}%  "
+                f"delta {delta:+.2f}pp"
+            )
+        else:
+            print(f"{k_str.upper():<6} Gemma {gemma_val:6.2f}%")
 
     results_out_path = RESULTS_DIR / "alignment_results_gemma_whitened.json"
     with open(results_out_path, "w") as f:

@@ -99,3 +99,27 @@ def test_align_09b_shape_contract_at_768d():
     assert "top1" in results
     assert "top2" in results
     assert "top3" in results
+
+
+def test_build_training_data_casefold_fallback():
+    from languages.egyptian.scripts.align_09 import build_training_data
+
+    anchors = [{"egyptian": "wsjr", "egyptian_raw": "wsjr", "english": "osiris"}]
+    eg_vocab = {"Wsjr": 0}                     # corpus preserved capitalization
+    eg_vectors = np.random.randn(1, 1536).astype(np.float32)
+    eng_vocab = {"osiris": 0}
+    eng_vectors = np.random.randn(1, 300).astype(np.float32)
+    X, Y, valid = build_training_data(anchors, eg_vocab, eg_vectors, eng_vocab, eng_vectors)
+    assert len(valid) == 1                     # recovered via casefold
+
+
+def test_stopword_gloss_filter():
+    from languages.egyptian.scripts.align_09 import filter_stopword_glosses
+
+    anchors = [
+        {"egyptian_raw": "a", "english": "the"},
+        {"egyptian_raw": "b", "english": "des"},
+        {"egyptian_raw": "c", "english": "god"},
+    ]
+    kept, dropped = filter_stopword_glosses(anchors)
+    assert [a["english"] for a in kept] == ["god"] and dropped == 2
