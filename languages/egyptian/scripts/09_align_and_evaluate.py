@@ -160,8 +160,6 @@ def select_alpha(
 
 
 def main():
-    import os
-    alphas = [0.01] if os.environ.get("EVAL_SMOKE") else ALPHAS
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     fused_path = MODELS_DIR / "fused_embeddings_1536d.npz"
@@ -220,7 +218,7 @@ def main():
     print("Selecting alpha on validation...")
     val_english = [a["english"] for a in val_valid]
     best_alpha, sweep = select_alpha(
-        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, alphas
+        X_train, Y_train, X_val, val_english, glove_vocab, glove_vectors, ALPHAS
     )
     print(f"Selected alpha={best_alpha}")
 

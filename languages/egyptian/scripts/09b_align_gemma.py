@@ -54,8 +54,6 @@ ALPHAS = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]
 
 
 def main():
-    import os
-    alphas = [0.01] if os.environ.get("EVAL_SMOKE") else ALPHAS
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     if not ENGLISH_GEMMA_PATH.exists():
@@ -124,7 +122,7 @@ def main():
     val_english = [a["english"] for a in val_valid]
     best_alpha, sweep = select_alpha(
         X_train, pca.transform(Yf_train), X_val, val_english,
-        eng_vocab_list, eng_vectors, alphas,
+        eng_vocab_list, eng_vectors, ALPHAS,
         predict_transform=pca.inverse_transform,
     )
     print(f"Selected alpha={best_alpha}")
