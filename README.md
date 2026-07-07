@@ -18,7 +18,17 @@
 
 ## Results
 
-Current best — whitened EmbeddingGemma alignment (post Workstream 2b):
+> **⚠ 2026-07-06 — the accuracy numbers below are invalidated as train/test leakage artifacts.**
+> A repo-wide eval-integrity audit found that anchor extraction registers multiple surface
+> forms per lemma, and the random 80/20 split let variants of the same word (šarrum/šarru,
+> "king") appear on both sides — so these headline numbers measure surface-variant
+> memorization, not translation. Under a leakage-free lemma-group split with
+> validation-selected alpha, honest zero-shot accuracy is ~0.1% top-1 (verified on Akkadian;
+> other slots' reruns deferred pending an eval redesign). The aligned spaces remain valid for
+> seen-lemma lookup (~44% top-1 on trained anchors) and document-level comparison. Full
+> evidence and methodology: [experiment journal](docs/EXPERIMENT_JOURNAL.md), 2026-07-06 entry.
+
+Previously reported (pre-fix, leaked split) — whitened EmbeddingGemma alignment (post Workstream 2b):
 
 | Metric | Cuneiformy (whitened-Gemma 768d) | Cuneiformy v1 (GloVe 300d) | Heiroglyphy (Egyptian) |
 |--------|:--------------------:|:---------------------:|:---------------------:|
@@ -38,6 +48,7 @@ The substantial leap from the v1 baseline (17.30% top-1) came in two steps: Phas
 
 Active experiment log: [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md). Recent findings (newest first):
 
+- **2026-07-06 — Eval integrity: lemma-group split + validation-selected alpha; all prior headline numbers invalidated.** Surface-variant train/test leakage (32–65% of test items had a same-gloss train anchor within edit distance 1) and test-set alpha tuning inflated every slot's accuracy. Fixed across all five language pipelines via a shared union-find group split (64/16/20 train/val/test) with alpha selected on validation. Akkadian rerun as evidence: GloVe 27.79% → 0.09%, whitened-Gemma 36.43% → 0.14% top-1; a three-way diagnostic (44.4% train-set accuracy, exact reproduction of the old number under the old split, 16.3% seen-gloss test rate) confirms the collapse is real zero-shot difficulty, not a bug. Remaining reruns deferred pending an eval redesign (seen/unseen strata, CSLS, restricted candidate vocab, document-level evaluation). See the journal entry for the full writeup.
 - **2026-04-20 — Anomaly Atlas Interpretive Findings:** Standalone ~9,500-word document + PDF with embedded cuneiform font, surfacing 15-20 atlas findings across six themes. See [`docs/anomaly_atlas_findings.md`](docs/anomaly_atlas_findings.md) (markdown) / [`docs/anomaly_atlas_findings.pdf`](docs/anomaly_atlas_findings.pdf) (PDF with cuneiform).
 - **2026-04-19 — Sumerian Cosmogony document:** A methodology-driven ~14,000-word case study on the Anunnaki cosmogonic cycle, using the 52%-top-1 whitened-Gemma alignment for geometric translation of five pivotal terms (`abzu`, `zi`, `nam`, `namtar`, `me`). See [`docs/sumerian_cosmogony.md`](docs/sumerian_cosmogony.md).
 - **2026-04-19 — Workstream 2b (STRETCH tier shipped):** Normalization fix landed. Whitened-Gemma top-1 **19.85% → 52.13% (+32.28pp)**. Training anchors 1,572 → 6,867. Coverage diagnostic's `normalization_recoverable` bucket cleared from 7,651 to 0. The 2b-pre diagnostic's attribution held to the bit — a ~20-line unicode-normalization fix delivered the largest single top-1 gain in the project's history.
