@@ -192,11 +192,17 @@ def _slot_documents():
 
 PARALLEL_PAIRS = [
     # (slot_a, doc_matcher_a, slot_b, doc_matcher_b, label)
-    # kumarbi-theogony: KUB 33.120 absent from corpus (TLHdig has KUB 33.12, 33.122-124
-    # but not 33.120); dropped at discovery; included here to log the drop at runtime too.
-    ("hittite", lambda p: "KUB 33.120" in p, "greek", lambda p: "Theogon" in p, "kumarbi-theogony"),
+    # kumarbi-theogony: KUB 33.120 (CTH 344) absent from corpus under that number;
+    # rescued via join: KBo 52.10+ (215 lines, contains Alalu→Anu→Kumarbi succession)
+    # and KUB 47.56 (50 lines, Kumarbi+Alalu); KBo 52.10+ = join incl. KUB 33.120.
+    ("hittite", lambda p: ("KBo 52.10+" in p) or ("KUB 47.56" in p),
+     "greek", lambda p: "Theogon" in p, "kumarbi-theogony"),
     ("hittite", lambda p: ("KBo 3.7" in p) or ("KUB 17.5" in p), "greek",
      lambda p: "Theogon" in p, "illuyanka-typhon"),
+    # ullikummi-typhon: CTH 345 (Song of Ullikummi) via KBo 26.58 (145 lines) and
+    # KBo 26.61 (86 lines); Typhon parallel in Hesiod Theogony.
+    ("hittite", lambda p: ("KBo 26.58" in p) or ("KBo 26.61" in p),
+     "greek", lambda p: "Theogon" in p, "ullikummi-typhon"),
 ]
 
 

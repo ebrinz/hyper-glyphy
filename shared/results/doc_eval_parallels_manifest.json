@@ -19,12 +19,13 @@
     },
     {
       "pair": "kumarbi-theogony",
-      "status": "DROPPED",
-      "reason": "KUB 33.120 (CTH 344, Song of Kumarbi) is absent from hittite_texts.json; corpus has KUB 33.12, KUB 33.122-124 but not 33.120; no confident alternative publication number known for CTH 344",
+      "status": "FOUND",
+      "note": "KUB 33.120 (CTH 344) absent under that number; rescued via join: KBo 52.10+ (215 lines, Alalu→Anu→Kumarbi succession; join includes KUB 33.120) and KUB 47.56 (50 lines, Kumarbi+Alalu). Confirmed kumarpi/alalu tokens in both.",
       "hittite_side": {
-        "searched_for": "KUB 33.120",
-        "found": false,
-        "nearby_in_corpus": ["KUB 33.12", "KUB 33.122", "KUB 33.123", "KUB 33.124"]
+        "searched_for": ["KBo 52.10+", "KUB 47.56"],
+        "found": true,
+        "matched": ["KBo 52.10+", "KUB 47.56"],
+        "line_counts": {"KBo 52.10+": 215, "KUB 47.56": 50}
       },
       "greek_side": {
         "searched_for": "Theogon",
@@ -46,11 +47,27 @@
         "found": true,
         "matched": ["Hesiod (0020) - Theogony (001)"]
       }
+    },
+    {
+      "pair": "ullikummi-typhon",
+      "status": "FOUND",
+      "note": "CTH 345 (Song of Ullikummi) via KBo 26.58 (145 lines) and KBo 26.61 (86 lines). Confirmed kumarpi/ullikummi/anu tokens in both. Typhon parallel in Hesiod Theogony.",
+      "hittite_side": {
+        "searched_for": ["KBo 26.58", "KBo 26.61"],
+        "found": true,
+        "matched": ["KBo 26.58", "KBo 26.61"],
+        "line_counts": {"KBo 26.58": 145, "KBo 26.61": 86}
+      },
+      "greek_side": {
+        "searched_for": "Theogon",
+        "found": true,
+        "matched": ["Hesiod (0020) - Theogony (001)"]
+      }
     }
   ],
   "summary": {
-    "found": 1,
-    "dropped": 3,
-    "gate_status": "BLOCKED: only 1 pair found; benchmark needs >= 2 to rank robustly; proceeding with 1 pair for measurement"
+    "found": 3,
+    "dropped": 2,
+    "gate_status": "3 pairs found and measured"
   }
 }
