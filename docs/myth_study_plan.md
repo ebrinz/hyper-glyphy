@@ -42,7 +42,8 @@ Question (d) was added to address the open question raised in `docs/RESEARCH_VIS
 - KBo 3.7: Illuyanka myth (the Dragon Myth, first recension) — confirmed in corpus
 - KUB 17.5: Illuyanka myth (second recension) — confirmed in corpus
 - KUB 33.x ritual range: 71 texts present; covers a wide range of purification, oracle, and festival rituals suitable for the magical comparandum slot
-- **Not present: KUB 33.120 (Kumarbi Cycle, CTH 344).** The main Kumarbi tablet is absent from TLHdig. This is a corpus gap that directly affects the positive control; see Go/No-Go.
+- **KBo 52.10+ : Kumarbi Cycle (CTH 344)** — the main tablet lives under this join (which includes KUB 33.120; the bare number is absent), 215 lines with the full Alalu→Anu→Kumarbi succession; plus fragment KUB 47.56 — confirmed in corpus
+- **KBo 26.58 + KBo 26.61: Song of Ullikummi (CTH 345)** — 145 + 86 lines, Kumarbi + Ullikummi confirmed; the strongest documented Typhonomachy parallel — confirmed in corpus
 
 **Greek.** The Diorisis corpus (820 texts, 88 authors) is the Greek source. Confirmed present:
 
@@ -91,7 +92,7 @@ For each language with available per-text data, the aligned-space pairwise matri
 
 ## 5. Controls
 
-**Positive control — Kumarbi → Theogony (Plane B).** The documented transmission from the Hittite Kumarbi Cycle (CTH 344) to Hesiod's Theogony is the study's positive control. Because KUB 33.120 is absent from TLHdig, the Kumarbi side of this pair must be reconstructed from fragments present in the KUB 33.x range. If structural similarity between any KUB 33.x texts and Theogony exceeds the genre-null distribution in Plane B, this is evidence that Plane B can detect known transmission relationships. If it does not, the positive control is inconclusive (absent source text), not falsified.
+**Positive control — Kumarbi → Theogony (Plane B).** The documented transmission from the Hittite Kumarbi Cycle (CTH 344) to Hesiod's Theogony is the study's positive control. The Kumarbi side is fully present in TLHdig as the join KBo 52.10+ (215 lines, the complete Alalu→Anu→Kumarbi succession) plus fragment KUB 47.56, and the Song of Ullikummi (CTH 345, KBo 26.58/26.61) supplies a second, independently documented parallel. Plane A already measured these pairs and failed (ranks 731 and 788 of 820); the control therefore now tests Plane B specifically: if structural similarity between the CTH 344/345 texts and Theogony exceeds the genre-null distribution under native-space RSA, Plane B can detect known transmission relationships where Plane A could not. If it also fails there, the two-plane design's cross-language leg is falsified for these maps, and the study narrows to within-language claims.
 
 **IE relatedness gradient.** Hittite and Greek are both Indo-European. Their native-space RSA matrices should show elevated structural similarity relative to cross-family comparisons (Hittite–Sumerian, Greek–Egyptian), all else equal. This gradient acts as a sanity check on Plane B sensitivity: if IE relatedness produces no elevation, structural similarity signals elsewhere should be interpreted cautiously.
 
@@ -118,14 +119,27 @@ Verdict: **PASS.** Document-level genre structure is real and recoverable in ali
 
 Criterion: parallel-text retrieval MRR ≥ 0.1, with the Kumarbi/Illuyanka positive-control pair ranking in the top quartile of its pool (top ~205 of 820).
 
-Measured results:
-- Kumarbi (KUB 33.120/CTH 344): **absent from TLHdig** — pair dropped
+Measured results (three pairs, including the rescued positive control):
+- Kumarbi (CTH 344) → Theogony: rank 731 of 820. The main tablet is present in TLHdig
+  under the join **KBo 52.10+** (215 lines, containing the Alalu→Anu→Kumarbi succession
+  narrative; the join includes KUB 33.120) plus fragment KUB 47.56 — the pair is fully
+  measured, not dropped.
+- Illuyanka (KBo 3.7 + KUB 17.5) → Theogony: rank 781 of 820
+- Ullikummi (CTH 345, KBo 26.58 + KBo 26.61) → Theogony: rank 788 of 820 — added during
+  discovery; the Song of Ullikummi is scholarship's strongest Typhonomachy parallel
 - Akkadian pairs: both dropped — no per-text IDs in available ORACC dumps
-- Illuyanka (KBo 3.7 + KUB 17.5) → Theogony: rank 781 of 820, MRR 0.0013 — far below gate
+- MRR 0.0013 — far below the ≥0.1 gate; all three pairs rank in the bottom 11% of the pool
 
-Controller diagnostics showed healthy within-language centroids (Hittite 304, Greek 71, English 6699 in-vocab tokens), mean-centering had no material effect (rank 781 → 773), and cross-language similarities were a non-discriminative blob (mean 0.252, std 0.024). The failure is in the alignment maps' cross-language geometry, not in corpus coverage.
+Controller diagnostics showed healthy centroids (Kumarbi document 72% in-vocab, 329 unique
+tokens; Theogony 6,699 in-vocab tokens), document length ruled out (top-50 length
+distribution matches the pool), mean-centering had no material effect (rank 781 → 773 on
+the Illuyanka pair), and cross-language similarities forming a non-discriminative blob
+(the entire 820-document pool sits in a ~0.18–0.24 cosine band from the Kumarbi query,
+with genre-irrelevant top hits). The failure is in the alignment maps' cross-language
+geometry — word-level alignment does not compose into cross-slot document retrieval —
+not in corpus coverage.
 
-Verdict: **FAIL.**
+Verdict: **FAIL (measured, with positive controls in play).**
 
 **Consequence for study design:** Plane A cross-language cosine claims are on hold. The study proceeds via Plane B (native-space RSA) as the primary method, which is unaffected by map quality. Cross-language conclusions must be grounded in structural convergence (Plane B) rather than direct distance (Plane A). Plane A is reinstated if alignment maps are improved via Procrustes remap or a stronger anchor set.
 
