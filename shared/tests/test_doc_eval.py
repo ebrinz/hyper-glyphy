@@ -1,4 +1,7 @@
+import json
+
 import numpy as np
+import pytest
 
 from shared.scripts.doc_eval import (
     GENRE_CLASSES,
@@ -42,3 +45,44 @@ def test_loo_nearest_centroid_separable():
     b = rng.randn(10, 4) + np.array([0, 10, 0, 0])
     acc = loo_nearest_centroid(np.vstack([a, b]), ["A"] * 10 + ["B"] * 10)
     assert acc == 100.0
+
+
+# PRE-STEP: _load_space sidecar resolution tests
+
+
+def test_load_space_json_sidecar(tmp_path):
+    from shared.scripts.doc_eval import _load_space
+
+    npz_path = tmp_path / "foo_aligned_vectors.npz"
+    np.savez(str(npz_path), vectors=np.array([[1.0, 0.0]], dtype=np.float32))
+
+    sidecar = tmp_path / "foo_aligned_vocab.json"
+    with open(sidecar, "w") as f:
+        json.dump(["word1", "word2"], f)
+
+    vocab, vectors = _load_space(npz_path)
+    assert vocab == {"word1": 0, "word2": 1}
+    assert vectors.shape == (1, 2)
+
+
+def test_load_space_no_sidecar_raises(tmp_path):
+    from shared.scripts.doc_eval import _load_space
+
+    npz_path = tmp_path / "bar_aligned_vectors.npz"
+    np.savez(str(npz_path), vectors=np.array([[1.0]], dtype=np.float32))
+
+    with pytest.raises(FileNotFoundError) as exc_info:
+        _load_space(npz_path)
+
+    assert "bar_aligned_vocab.json" in str(exc_info.value)
+    assert "bar_aligned_vocab.pkl" in str(exc_info.value)
+
+
+# Step 2: MRR test
+
+
+def test_mrr():
+    from shared.scripts.doc_eval import mean_reciprocal_rank
+
+    # ranks are 1-based positions of the true parallel
+    assert mean_reciprocal_rank([1, 2, 4]) == round((1 + 0.5 + 0.25) / 3, 4)

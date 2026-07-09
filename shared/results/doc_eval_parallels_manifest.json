@@ -1,0 +1,56 @@
+{
+  "discovery_notes": {
+    "hittite_corpus": "20713 texts from TLHdig (hittite_texts.json)",
+    "greek_corpus": "820 texts from Diorisis/Perseus (greek_texts.json)",
+    "akkadian_note": "sb_texts.json/ob_literary_texts.json have p_numbers (ORACC Q/P-numbers) with no composition names; cannot match by composition title"
+  },
+  "pairs": [
+    {
+      "pair": "inanna-ishtar-descent",
+      "status": "DROPPED",
+      "reason": "Akkadian side: available files (ob_literary_lemmas.json) carry only cf/form/gw/pos/norm/lang — no text ids; sb_texts.json has Q-number p_numbers but no readable composition titles to match 'Ishtar Descent'",
+      "sumerian_side": {"comp": "c141", "found": true}
+    },
+    {
+      "pair": "flood-ziusudra-akkadian",
+      "status": "DROPPED",
+      "reason": "Akkadian side: same as above — no composition-level identifiers in any Akkadian raw file",
+      "sumerian_side": {"comp": "c174", "found": true}
+    },
+    {
+      "pair": "kumarbi-theogony",
+      "status": "DROPPED",
+      "reason": "KUB 33.120 (CTH 344, Song of Kumarbi) is absent from hittite_texts.json; corpus has KUB 33.12, KUB 33.122-124 but not 33.120; no confident alternative publication number known for CTH 344",
+      "hittite_side": {
+        "searched_for": "KUB 33.120",
+        "found": false,
+        "nearby_in_corpus": ["KUB 33.12", "KUB 33.122", "KUB 33.123", "KUB 33.124"]
+      },
+      "greek_side": {
+        "searched_for": "Theogon",
+        "found": true,
+        "matched": ["Hesiod (0020) - Theogony (001)"]
+      }
+    },
+    {
+      "pair": "illuyanka-typhon",
+      "status": "FOUND",
+      "hittite_side": {
+        "searched_for": ["KBo 3.7", "KUB 17.5"],
+        "found": true,
+        "matched": ["KBo 3.7", "KUB 17.5"],
+        "line_counts": {"KBo 3.7": 120, "KUB 17.5": 24}
+      },
+      "greek_side": {
+        "searched_for": "Theogon",
+        "found": true,
+        "matched": ["Hesiod (0020) - Theogony (001)"]
+      }
+    }
+  ],
+  "summary": {
+    "found": 1,
+    "dropped": 3,
+    "gate_status": "BLOCKED: only 1 pair found; benchmark needs >= 2 to rank robustly; proceeding with 1 pair for measurement"
+  }
+}

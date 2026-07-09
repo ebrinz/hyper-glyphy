@@ -1,0 +1,21 @@
+{
+  "pairs": [
+    {
+      "pair": "kumarbi-theogony",
+      "status": "DROPPED: unmatched (a=0, b=1)"
+    },
+    {
+      "pair": "illuyanka-typhon",
+      "rank": 781,
+      "pool_size": 820,
+      "matched_a": [
+        "KBo 3.7",
+        "KUB 17.5"
+      ],
+      "matched_b": [
+        "Hesiod (0020) - Theogony (001)"
+      ]
+    }
+  ],
+  "mrr": 0.0013
+}

@@ -99,17 +99,29 @@ def loo_nearest_centroid(doc_vecs, labels):
 
 def _load_space(npz_path):
     import pickle
+    npz_path = Path(npz_path)
     data = np.load(str(npz_path), allow_pickle=True)
     vectors = data["vectors"].astype(np.float32)
     if "vocab" in data:
         vocab_list = data["vocab"]
     else:
-        # Aligned spaces store vocab in a sidecar pkl in the same directory
-        pkl_candidates = list(Path(npz_path).parent.glob("*vocab*.pkl"))
-        if not pkl_candidates:
-            raise FileNotFoundError(f"No vocab key in {npz_path} and no sidecar vocab pkl found")
-        with open(pkl_candidates[0], "rb") as f:
-            vocab_list = pickle.load(f)  # project-internal file, not user-supplied
+        # Derive sidecar name deterministically: strip _gemma_vectors or _vectors suffix,
+        # append _vocab, then try .json and .pkl in order.
+        stem = npz_path.stem
+        base = re.sub(r"_gemma_vectors$|_vectors$", "", stem)
+        sidecar_json = npz_path.parent / f"{base}_vocab.json"
+        sidecar_pkl = npz_path.parent / f"{base}_vocab.pkl"
+        if sidecar_json.exists():
+            with open(sidecar_json) as f:
+                vocab_list = json.load(f)
+        elif sidecar_pkl.exists():
+            with open(sidecar_pkl, "rb") as f:
+                vocab_list = pickle.load(f)  # project-internal file, not user-supplied
+        else:
+            raise FileNotFoundError(
+                f"No vocab key in {npz_path} and no sidecar found; "
+                f"tried: {sidecar_json}, {sidecar_pkl}"
+            )
     vocab = {str(w): i for i, w in enumerate(vocab_list)}
     return vocab, vectors
 
@@ -153,8 +165,93 @@ def run_genre():
     print(f"Saved to: {res}")
 
 
+def mean_reciprocal_rank(ranks):
+    return round(sum(1.0 / r for r in ranks) / len(ranks), 4)
+
+
+def _slot_documents():
+    """Per-slot {doc_id: tokens} for the slots with per-text corpora."""
+    docs = {}
+    with open(ETCSL_PATH) as f:
+        comps = parse_etcsl_compositions(json.load(f))
+    docs["sumerian"] = {k: v["tokens"] for k, v in comps.items()}
+
+    from languages.hittite.scripts.hittite_normalize import normalize_hittite_token
+    from languages.greek.scripts.greek_normalize import normalize_greek_token
+
+    for slot, normalizer in (("hittite", normalize_hittite_token),
+                             ("greek", normalize_greek_token)):
+        path = _ROOT / "languages" / slot / "data" / "raw" / f"{slot}_texts.json"
+        out = {}
+        for t in json.load(open(path)):
+            toks = [normalizer(w) for line in t["lines"] for w in line.split()]
+            out[t["p_number"]] = [t for t in toks if t]
+        docs[slot] = out
+    return docs
+
+
+PARALLEL_PAIRS = [
+    # (slot_a, doc_matcher_a, slot_b, doc_matcher_b, label)
+    # kumarbi-theogony: KUB 33.120 absent from corpus (TLHdig has KUB 33.12, 33.122-124
+    # but not 33.120); dropped at discovery; included here to log the drop at runtime too.
+    ("hittite", lambda p: "KUB 33.120" in p, "greek", lambda p: "Theogon" in p, "kumarbi-theogony"),
+    ("hittite", lambda p: ("KBo 3.7" in p) or ("KUB 17.5" in p), "greek",
+     lambda p: "Theogon" in p, "illuyanka-typhon"),
+]
+
+
 def run_parallels():
-    raise SystemExit("parallels: implemented in Task 10")
+    docs = _slot_documents()
+    aligned = {}
+    for slot in docs:
+        path = _ROOT / "languages" / slot / "final_output" / f"{slot}_aligned_gemma_vectors.npz"
+        if path.exists():
+            aligned[slot] = _load_space(path)
+
+    # SIF weights per slot from its own document tokens
+    weights = {s: sif_weights(Counter(t for d in docs[s].values() for t in d))
+               for s in docs}
+
+    centroids = {}
+    for slot in aligned:
+        vocab, vectors = aligned[slot]
+        centroids[slot] = {
+            did: v for did, toks in docs[slot].items()
+            if (v := doc_centroid(toks, vocab, vectors, weights[slot])) is not None
+        }
+
+    results, ranks = [], []
+    for slot_a, match_a, slot_b, match_b, label in PARALLEL_PAIRS:
+        if slot_a not in centroids or slot_b not in centroids:
+            results.append({"pair": label, "status": "DROPPED: missing aligned space"})
+            continue
+        a_ids = [d for d in centroids[slot_a] if match_a(d)]
+        b_ids = [d for d in centroids[slot_b] if match_b(d)]
+        if not a_ids or not b_ids:
+            results.append({"pair": label, "status":
+                            f"DROPPED: unmatched (a={len(a_ids)}, b={len(b_ids)})"})
+            continue
+        qv = np.mean([centroids[slot_a][d] for d in a_ids], axis=0)
+        tv = np.mean([centroids[slot_b][d] for d in b_ids], axis=0)
+        # Rank the true target among ALL other-slot documents.
+        pool_ids = list(centroids[slot_b].keys())
+        pool = np.array([centroids[slot_b][d] for d in pool_ids], dtype=np.float32)
+        pool_n = pool / (np.linalg.norm(pool, axis=1, keepdims=True) + 1e-12)
+        qn = qv / (np.linalg.norm(qv) + 1e-12)
+        sims = pool_n @ qn
+        target_sim = float((tv / (np.linalg.norm(tv) + 1e-12)) @ qn)
+        rank = int((sims > target_sim).sum()) + 1
+        ranks.append(rank)
+        results.append({"pair": label, "rank": rank, "pool_size": len(pool_ids),
+                        "matched_a": a_ids[:5], "matched_b": b_ids[:5]})
+        print(f"{label:<20} rank {rank}/{len(pool_ids)}")
+
+    out = {"pairs": results, "mrr": mean_reciprocal_rank(ranks) if ranks else None}
+    res = _ROOT / "shared" / "results" / "doc_eval_parallels.json"
+    res.parent.mkdir(exist_ok=True)
+    with open(res, "w") as f:
+        json.dump(out, f, indent=2)
+    print(f"MRR: {out['mrr']}  Saved to: {res}")
 
 
 def main():
