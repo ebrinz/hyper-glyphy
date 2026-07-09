@@ -4,6 +4,63 @@ Cross-language experiment log. Reverse chronological — newest at the top.
 
 ## Recent findings (newest first)
 
+## 2026-07-09 — Eval redesign shipped: stratified CSLS suite + document-level panel; all five slots measured (Greek first run).
+
+The eval-redesign pipeline (spec `docs/superpowers/specs/2026-07-06-eval-redesign.md`) replaces the broken single-stratum eval with a stratified CSLS retrieval suite and adds two document-level panels. Metric definitions: CSLS (k=10 mutual-neighbor reranking) over a 50K-candidate GloVe or Gemma English vocabulary; evaluation reports exact-match top-1/5/10 and synonym-credited top-1/5/10 (WordNet first synset); three strata per run: **dictionary-in-sample** (test anchor whose lemma group is in train), **interpolation** (lemma group in train, surface not), **zero-shot** (lemma group entirely unseen). All five slots ran on the same seed-42 64/16/20 lemma-group split (surface-casefold-group for Egyptian, which has no lemma key). Results are the first honest numbers for all five slots; Greek is a first-ever run (G1–G4 scaffold completed 2026-05-11).
+
+**Five-slot suite — top-1 exact % / syn % (50K candidates, best val-selected alpha per target)**
+
+| Slot | Target | alpha | Dict n | Dict top-1 | Dict syn | Interp n | Interp top-1 | Zero-shot n | Zero-shot top-1 | Combined n | Combined top-1 | Combined syn |
+|------|--------|-------|-------:|:----------:|:--------:|----------:|:------------:|------------:|:---------------:|-----------:|:--------------:|:------------:|
+| Akkadian | GloVe | 0.1 | 962 | 48.54% | 50.73% | 437 | 0.00% | 1857 | 0.38% | 2294 | 0.31% | 1.13% |
+| Akkadian | Gemma | 1e4 ¹ | 962 | 19.85% | 22.87% | 437 | 0.46% | 1857 | 0.05% | 2294 | 0.13% | 0.48% |
+| Egyptian | GloVe | 1e-4 | 822 | 79.20% | 79.20% | 354 | 18.93% | 105 | 0.95% | 459 | 14.81% | 15.69% |
+| Egyptian | Gemma | 10 | 822 | 42.82% | 45.13% | 354 | 20.06% | 105 | 0.00% | 459 | 15.47% | 16.12% |
+| Hittite | GloVe | 1e-4 | 363 | 63.36% | 63.64% | 266 | 6.77% | 144 ² | 0.00% | 410 | 4.39% | 4.39% |
+| Hittite | Gemma | 1e-4 | 363 | 79.61% | 80.17% | 266 | 10.53% | 144 ² | 0.00% | 410 | 6.83% | 8.05% |
+| Sumerian | GloVe | 100 | 962 | 70.79% | 71.10% | 753 | 7.30% | 565 | 0.88% | 1318 | 4.55% | 5.01% |
+| Sumerian | Gemma | 1000 | 962 | 74.32% | 75.16% | 753 | 9.43% | 565 | 0.35% | 1318 | 5.54% | 5.69% |
+| Greek | GloVe | 1e-4 | 922 | 39.05% | 42.08% | 12487 | 4.06% | 3240 | 0.40% | 15727 | 3.31% | 5.67% |
+| Greek | Gemma | 0.1 | 922 | 52.49% | 55.31% | 12487 | 5.33% | 3240 | 0.68% | 15727 | 4.37% | 7.42% |
+
+Gemma beats GloVe combined in 4 of 5 slots (all except Akkadian — see caveat (a)). Dictionary stratum accuracy (39–80% top-1 at 50K candidates) is the strongest signal; interpolation is weak-to-moderate (0–20%); zero-shot is near-zero by design (0–1%), confirming that the linear map does not generalize to unseen lemma families at this corpus scale.
+
+**Caveats (mandatory)**
+
+(a) **Akkadian Gemma anomaly — alpha-selection noise floor.** The Gemma val sweep is flat at 0–0.13% (0–2 correct of 1,568 val items). Alpha=1e4 won by a single anchor over the entire 0.1–1000 plateau (all tied at 0.064%). That over-regularized alpha crushes the dictionary stratum (19.9% vs GloVe 48.5%), making Akkadian the only slot where Gemma underperforms GloVe. This is val-selection noise at near-zero signal, not a whitening-conditioning failure. Known mitigation: break ties toward lower alpha, or select on val top-5 or dictionary-stratum accuracy (a higher-signal metric). Grid extension beyond 1e4 would not help — the curve drops to 0% past 1e4.
+
+(b) **Hittite candidate-vocab gap.** Of 1,320 Hittite test items, 910 (69%) have gold glosses that are OOV of the 50K GloVe candidate vocabulary; only 410 items (31%) are evaluable. The zero-shot 0.00% rate is measured on the 144 kept zero-shot items only. Root cause: German→English gloss translation via EmbeddingGemma for TLHdig yields many specialized glosses absent from GloVe-50K. Mitigation: expand candidate vocab or switch to a multilingual target.
+
+(c) **Leak check: 0.00% all five slots.** Post-split near-surface-edge purge confirmed zero same-gloss edit-distance-1 cross-split leak for all five language slots. Hittite fixed from 10.68% (in the lemma-split-eval branch): root cause was TLHdig citation-form spelling variants (kattan/katta, lugalutti/lugaluttim), now merged before splitting via the shared anchor_split.py union-find. Independently verified: 318 pytest tests pass including the leak-gate assertions in `shared/tests/test_anchor_split.py`.
+
+**Egyptian data-fix effects.** Egyptian uses surface-casefold-group split (no lemma key in the source lexicon). The pipeline also applies a stopword-gloss filter: **4,018 stopword-gloss pairs dropped**, leaving 4,152 total anchor pairs (2,836 valid / in-vocab). A casefold fallback lookup (`eg_vocab_cf`) recovers anchors whose source surface differs from the FastText vocab entry only in case. GloVe combined 14.81%, Gemma 15.47% — the highest combined accuracy of all five slots, driven by a strong dictionary stratum (79.2% GloVe, 42.8% Gemma at 50K candidates).
+
+**Document-level panel 1 — genre leave-one-out (Sumerian ETCSL, n=338 compositions, 5 genres, majority baseline 40.83%)**
+
+| Space | LOO accuracy | vs majority |
+|-------|:------------:|:-----------:|
+| gemma_aligned | 63.31% | +22.5 pp |
+| glove_aligned | 60.95% | +20.1 pp |
+| fused_unaligned | 68.05% | +27.2 pp |
+
+Gate 1 criterion: ≥15 pp over majority in at least one aligned space. **PASS** (gemma_aligned +22.5 pp clears gate; projection cost from native to aligned space ≈5 pp). This validates within-language genre structure in the aligned spaces and Plane B native-space RSA for the myth study.
+
+**Document-level panel 2 — cross-language parallel retrieval (Hittite → Greek, pool=820 Greek documents)**
+
+| Pair | Hittite source | Rank / 820 |
+|------|----------------|:----------:|
+| Kumarbi (CTH 344) → Theogony | KBo 52.10+, KUB 47.56 | 731 |
+| Illuyanka → Theogony | KBo 3.7, KUB 17.5 | 781 |
+| Ullikummi (CTH 345) → Theogony | KBo 26.58, KBo 26.61 | 788 |
+| **MRR** | | **0.0013** |
+
+Gate 2 criterion: MRR ≥ 0.1, positive control in top quartile (≤205). **FAIL (measured, with three positive-control pairs in play).** All three pairs rank in the bottom 11% of the pool. Controller diagnostics ruled out corpus-coverage failure: Kumarbi document is 72% in-vocab (329 unique tokens); length does not predict low rank (top-50 length distribution matches the pool); mean-centering moved Illuyanka rank 781→773 (negligible). Root cause: cross-language cosines form a non-discriminative blob (entire 820-document pool sits in a ~0.18–0.24 cosine band from any Hittite query, with genre-irrelevant top hits — Lucian, Aristophanes). Conclusion: **word-level alignment does not compose into cross-slot document retrieval.** The KBo 52.10+ join successfully rescued the Kumarbi positive control (KUB 33.120 bare number absent from TLHdig; join contains the full Alalu→Anu→Kumarbi succession, 215 lines); the pair is fully measured, not dropped — and still fails.
+
+**Go/No-Go summary and myth study pointer.** Gate 1 PASS clears within-language genre analysis and Plane B native-space RSA. Gate 2 FAIL puts Plane A cross-language cosine on hold. The myth study (`docs/myth_study_plan.md`) proceeds via **Plane B (native-space second-order RSA) as the primary plane** — Plane B never performs cross-language cosine and is unaffected by map quality. Cross-language Plane A claims are reinstated only if alignment maps are improved via Procrustes remap or a stronger anchor set. Egyptian and Akkadian require per-text corpus segmentation before joining the document-level study.
+
+¹ Akkadian Gemma alpha=1e4 is the grid ceiling; see caveat (a).
+² Hittite zero-shot n=144 is the in-vocab subset; 910/1320 (69%) of all Hittite test gold glosses are OOV of the 50K candidate vocab; see caveat (b).
+
 - **2026-07-06 — Eval integrity: lemma-group split + validation-selected alpha. All prior headline numbers are invalidated as leakage artifacts.** A repo-wide review (2026-07-01) found two structural flaws in every slot's evaluation: (1) **surface-variant train/test leakage** — anchor extraction deliberately registers multiple surfaces per lemma with the same gloss, and the 80/20 `train_test_split` over *pairs* let (šarrum, "king") train while (šarru, "king") tested. Measured on the exact shipped seed-42 splits, the fraction of test items with a same-gloss train anchor within edit distance 1: **Akkadian 56.9%, Greek 65.2% (projected), Hittite 43.3%, Sumerian 32.0%, Egyptian 29.5%**. (2) **Alpha tuned on the test set** — every `ridge_alpha_sweep.py` selected alpha on the same split used for reporting.
   **The fix (all five slots, code complete):** shared `shared/scripts/anchor_split.py` — union-find grouping (anchors merge on shared lemma OR shared surface; gloss fallback where no lemma source exists, i.e. Egyptian), 64/16/20 train/val/test, alpha selected by top-1 on validation from a widened grid (floor 1e-4), retrain on train+val, report on the untouched test set; OOV subword-inferred anchors train-only; `ridge_alpha_sweep.py` retired (selection now inline in 09/09b); Sumerian's recorded-alpha bug fixed (trained α=100, recorded α=0.001); Sumerian ETCSL extraction made deterministic (sorted set iteration).
   **Akkadian rerun (the evidence):** GloVe top-1 **27.79% → 0.09%**, whitened-Gemma **36.43% → 0.14%** (α=0.01 both, val-selected). Three-way diagnostic confirmed this is real, not plumbing: the shipped model scores **44.4% top-1 on its own training anchors**; re-running the *new* code with the *old* random-pair split reproduces **27.59%** (vs 27.79% shipped — the old number was leakage, quantitatively); and only **16.3% of lemma-split test glosses appear anywhere in train** — the union-find sends large lemma families to train, so the honest eval is nearly pure zero-shot lexicon induction (unseen lemma, mostly unseen gloss, exact-match over 400k candidates). ~0.1% is ~400× above chance but demonstrates the linear map does not generalize to unseen lemmas at this corpus scale. By extension the flagship Sumerian 52.13% and all other headline numbers measure surface-variant memorization, not translation.

@@ -18,34 +18,35 @@
 
 ## Results
 
-> **⚠ 2026-07-06 — the accuracy numbers below are invalidated as train/test leakage artifacts.**
-> A repo-wide eval-integrity audit found that anchor extraction registers multiple surface
-> forms per lemma, and the random 80/20 split let variants of the same word (šarrum/šarru,
-> "king") appear on both sides — so these headline numbers measure surface-variant
-> memorization, not translation. Under a leakage-free lemma-group split with
-> validation-selected alpha, honest zero-shot accuracy is ~0.1% top-1 (verified on Akkadian;
-> other slots' reruns deferred pending an eval redesign). The aligned spaces remain valid for
-> seen-lemma lookup (~44% top-1 on trained anchors) and document-level comparison. Full
-> evidence and methodology: [experiment journal](docs/EXPERIMENT_JOURNAL.md), 2026-07-06 entry.
+> Numbers before 2026-07-06 measured surface-variant memorization, not translation — see the [experiment journal](docs/EXPERIMENT_JOURNAL.md), 2026-07-06 entry.
 
-Previously reported (pre-fix, leaked split) — all five language slots, per-slot READMEs have details:
+The table below reports the **eval-redesign suite** (stratified CSLS, 50K candidates, lemma-group split): three strata per slot — **dictionary** (test anchor's lemma group seen in train), **interpolation** (lemma group in train, surface not), **zero-shot** (lemma group entirely unseen) — plus a document-level panel (Sumerian ETCSL genre LOO and Hittite→Greek parallel retrieval). Gemma beats GloVe combined in 4 of 5 slots; Akkadian Gemma is anomalous (alpha-selection noise at near-zero val signal — see journal). Hittite zero-shot n is small (only 31% of test gold glosses are in-vocab of the 50K candidate set).
 
-| Slot | Gemma top-1 | GloVe top-1 | Family / Script |
-|------|:-----------:|:-----------:|:----------------|
-| [Sumerian](languages/sumerian/) | 52.13% | 35.70% | language isolate / cuneiform |
-| [Egyptian](languages/egyptian/) | 34.57% | 33.42% | Afroasiatic / hieroglyphic |
-| [Akkadian](languages/akkadian/) | 36.43% | 27.79% | East Semitic / cuneiform |
-| [Hittite](languages/hittite/) | 40.62% | 35.40% | Indo-European (Anatolian) / cuneiform |
-| [Greek](languages/greek/) | — | — | Indo-European / alphabetic (scaffold complete, first run pending) |
+| Slot | Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn | Family / Script |
+|------|--------|-------|:----------:|:------------:|:---------------:|:--------------:|:------------:|:----------------|
+| [Sumerian](languages/sumerian/) | GloVe | 100 | 70.79% | 7.30% | 0.88% | 4.55% | 5.01% | language isolate / cuneiform |
+| [Sumerian](languages/sumerian/) | Gemma | 1000 | 74.32% | 9.43% | 0.35% | 5.54% | 5.69% | language isolate / cuneiform |
+| [Egyptian](languages/egyptian/) | GloVe | 1e-4 | 79.20% | 18.93% | 0.95% | 14.81% | 15.69% | Afroasiatic / hieroglyphic |
+| [Egyptian](languages/egyptian/) | Gemma | 10 | 42.82% | 20.06% | 0.00% | 15.47% | 16.12% | Afroasiatic / hieroglyphic |
+| [Akkadian](languages/akkadian/) | GloVe | 0.1 | 48.54% | 0.00% | 0.38% | 0.31% | 1.13% | East Semitic / cuneiform |
+| [Akkadian](languages/akkadian/) | Gemma | 1e4 ¹ | 19.85% | 0.46% | 0.05% | 0.13% | 0.48% | East Semitic / cuneiform |
+| [Hittite](languages/hittite/) | GloVe | 1e-4 | 63.36% | 6.77% | 0.00% ² | 4.39% | 4.39% | Indo-European (Anatolian) / cuneiform |
+| [Hittite](languages/hittite/) | Gemma | 1e-4 | 79.61% | 10.53% | 0.00% ² | 6.83% | 8.05% | Indo-European (Anatolian) / cuneiform |
+| [Greek](languages/greek/) | GloVe | 1e-4 | 39.05% | 4.06% | 0.40% | 3.31% | 5.67% | Indo-European / alphabetic |
+| [Greek](languages/greek/) | Gemma | 0.1 | 52.49% | 5.33% | 0.68% | 4.37% | 7.42% | Indo-European / alphabetic |
+
+¹ Akkadian Gemma alpha=1e4 is the grid ceiling (val-selection noise at ~0.06%); see journal 2026-07-09 entry.
+² Hittite zero-shot n=144; 69% of test gold glosses are OOV of the 50K candidate vocab; see journal 2026-07-09 entry.
+
+**Document-level panel.** Sumerian ETCSL genre leave-one-out (n=338, 5 genres, majority baseline 40.83%): gemma_aligned 63.31% (+22.5 pp), glove_aligned 60.95% (+20.1 pp), fused_unaligned 68.05% (+27.2 pp, projection cost ≈5 pp). Gate 1 PASS. Cross-language parallel retrieval (Hittite → Greek, pool=820): Kumarbi→Theogony rank 731/820, Illuyanka→Theogony 781/820, Ullikummi→Theogony 788/820, MRR 0.0013. Gate 2 FAIL — word-level alignment does not compose into cross-slot document retrieval; myth study proceeds via Plane B (native-space RSA). See [`docs/myth_study_plan.md`](docs/myth_study_plan.md) for the two-plane study design and go/no-go verdicts.
 
 Both alignment targets are accessible via per-language `Lookup` classes (`space="gemma"|"glove"`).
-
-For Sumerian, the substantial leap from the v1 baseline (17.30% top-1) came in two steps: Phase B added whitened EmbeddingGemma as a second target (+2.54pp), and Workstream 2b closed a unicode-normalization gap between ORACC citation forms and the ATF corpus (+32.28pp top-1, a ~4.4× training-anchor multiplier). See the [Sumerian experiment journal](languages/sumerian/docs/EXPERIMENT_JOURNAL.md) for the diagnostic methodology.
 
 ### Research progress
 
 Active experiment log: [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md). Sumerian-specific historical findings: [`languages/sumerian/docs/EXPERIMENT_JOURNAL.md`](languages/sumerian/docs/EXPERIMENT_JOURNAL.md). Recent findings (newest first):
 
+- **2026-07-09 — Eval redesign shipped: stratified CSLS suite + document-level panel; all five slots measured (Greek first run).** Three-stratum eval (dictionary/interpolation/zero-shot), CSLS retrieval, 50K candidates, leak-check 0.00% all five slots. Genre LOO PASS (gemma_aligned 63.31% vs 40.83% majority). Parallel retrieval FAIL (MRR 0.0013; myth study routes to Plane B native-space RSA). See journal 2026-07-09 entry and [`docs/myth_study_plan.md`](docs/myth_study_plan.md).
 - **2026-07-06 — Eval integrity: lemma-group split + validation-selected alpha; all prior headline numbers invalidated.** Surface-variant train/test leakage (32–65% of test items had a same-gloss train anchor within edit distance 1) and test-set alpha tuning inflated every slot's accuracy. Fixed across all five language pipelines via a shared union-find group split (64/16/20 train/val/test) with alpha selected on validation. Akkadian rerun as evidence: GloVe 27.79% → 0.09%, whitened-Gemma 36.43% → 0.14% top-1; a three-way diagnostic (44.4% train-set accuracy, exact reproduction of the old number under the old split, 16.3% seen-gloss test rate) confirms the collapse is real zero-shot difficulty, not a bug. Remaining reruns deferred pending an eval redesign (seen/unseen strata, CSLS, restricted candidate vocab, document-level evaluation). See the journal entry for the full writeup.
 - **2026-05-11 — Greek scaffold (G1–G4): parser, LSJ glosses, clean, anchors, FastText + alignment scripts ready; first run pending eval redesign.** 106,260 anchors, 10.2M-token Diorisis corpus (Homer to 5th c. AD). See [`languages/greek/`](languages/greek/).
 - **2026-05-11 — Hittite v1 shipped:** Gemma top-1 40.62% (pre-fix), beats Akkadian's v1.3 from day one. TLHdig corpus (Zenodo), German glosses translated via multilingual EmbeddingGemma. See [`languages/hittite/docs/EXPERIMENT_JOURNAL.md`](languages/hittite/docs/EXPERIMENT_JOURNAL.md).
