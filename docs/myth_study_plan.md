@@ -143,7 +143,7 @@ Verdict: **FAIL (measured, with positive controls in play).**
 
 **Consequence for study design:** Plane A cross-language cosine claims are on hold. The study proceeds via Plane B (native-space RSA) as the primary method, which is unaffected by map quality. Cross-language conclusions must be grounded in structural convergence (Plane B) rather than direct distance (Plane A). Plane A is reinstated if alignment maps are improved via Procrustes remap or a stronger anchor set.
 
-**Word-level suite context (for calibration).** Dictionary strata accuracy ranges from 39–79% at top-1 across slots. Zero-shot is ~0–1% by construction (anchor split prevents gloss-group leakage). Gemma beats GloVe combined in 4 of 5 language slots. Known anomalies: Akkadian alpha-selection noise, Hittite candidate vocabulary covers only ~31% of its gold glosses. These constrain how much semantic precision can be expected from individual word-level embeddings, which propagates into document centroid quality.
+**Word-level suite context (for calibration).** Dictionary strata accuracy ranges from 39–79% at top-1 across slots. Zero-shot is ~0–1% (test glosses never seen as training targets; the lemma-group split with near-surface edges eliminates surface-variant leakage). Gemma beats GloVe combined in 4 of 5 language slots. Known anomalies: Akkadian alpha-selection noise, Hittite candidate vocabulary covers only ~31% of its gold glosses. These constrain how much semantic precision can be expected from individual word-level embeddings, which propagates into document centroid quality.
 
 ---
 
