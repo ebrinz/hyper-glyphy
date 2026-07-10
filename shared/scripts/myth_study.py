@@ -10,12 +10,16 @@ are not in the Diorisis corpus.
 See: docs/myth_study_plan.md
 Usage: python -m shared.scripts.myth_study run
 """
+import itertools
 import json
+import math
 import sys
 from collections import Counter
 from pathlib import Path
 
 import numpy as np
+from scipy.stats import rankdata, spearmanr
+
 _ROOT = Path(__file__).parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -230,6 +234,10 @@ def build_roster(corpora):
     return roster, notes, roster_tokens
 
 
+# ---------------------------------------------------------------------------
+# Plane B primitives
+# ---------------------------------------------------------------------------
+
 def _unit(v):
     return v / (np.linalg.norm(v) + 1e-12)
 
@@ -238,6 +246,84 @@ def _cos(a, b):
     return float(_unit(np.asarray(a, dtype=np.float64))
                  @ _unit(np.asarray(b, dtype=np.float64)))
 
+
+def doc_profile(doc_id, doc_vecs, members_by_theme, ladder):
+    """Cosine profile of a doc against leave-one-out theme centroids."""
+    out = []
+    for theme in ladder:
+        rows = [doc_vecs[d] for d in members_by_theme[theme]
+                if d != doc_id and d in doc_vecs]
+        if not rows:
+            raise ValueError(
+                f"theme '{theme}' has no members after excluding {doc_id!r}")
+        out.append(_cos(doc_vecs[doc_id], np.mean(rows, axis=0)))
+    return np.array(out)
+
+
+def theme_sim_matrix(theme_cents, ladder):
+    """K x K cosine matrix over theme centroids in ladder order."""
+    M = np.array([_unit(np.asarray(theme_cents[t], dtype=np.float64))
+                  for t in ladder])
+    return M @ M.T
+
+
+def upper_tri(M):
+    i, j = np.triu_indices(len(M), 1)
+    return np.asarray(M)[i, j]
+
+
+def rsa_permutation(A, B, max_perms=MAX_PERMS, rng=None):
+    """Spearman over upper triangles + theme-label permutation p.
+
+    Exhaustive over all K! label permutations of B when K! <= max_perms
+    (identity included, so min p = 1/K!); otherwise max_perms random draws.
+    """
+    rho = float(spearmanr(upper_tri(A), upper_tri(B)).statistic)
+    k = len(A)
+    n_all = math.factorial(k)
+    B = np.asarray(B)
+    if n_all <= max_perms:
+        perms = list(itertools.permutations(range(k)))
+        exhaustive = True
+    else:
+        rng = rng or np.random.default_rng(SEED)
+        perms = [tuple(rng.permutation(k)) for _ in range(max_perms)]
+        exhaustive = False
+    ge = 0
+    for p in perms:
+        idx = np.asarray(p)
+        r = spearmanr(upper_tri(A), upper_tri(B[np.ix_(idx, idx)])).statistic
+        if r >= rho - 1e-12:
+            ge += 1
+    return {"rho": round(rho, 4), "p": round(ge / len(perms), 4),
+            "n_perms": len(perms), "exhaustive": exhaustive}
+
+
+def percentile_in_null(obs, null):
+    """Midrank percentile of obs within null (100 = above all null draws)."""
+    null = np.asarray(null, dtype=np.float64)
+    below = float((null < obs).sum())
+    ties = float((null == obs).sum())
+    return float((below + 0.5 * ties) / len(null) * 100)
+
+
+def rank_delta_report(M_native, M_aligned, ids, top=5):
+    """Spearman between the two upper triangles + largest per-pair rank deltas."""
+    un, ua = upper_tri(M_native), upper_tri(M_aligned)
+    rho = float(spearmanr(un, ua).statistic)
+    rn, ra = rankdata(un), rankdata(ua)
+    delta = rn - ra
+    i, j = np.triu_indices(len(ids), 1)
+    order = np.argsort(-np.abs(delta), kind="stable")[:top]
+    entries = [{"pair": (ids[i[k]], ids[j[k]]),
+                "rank_native": float(rn[k]), "rank_aligned": float(ra[k]),
+                "delta": float(delta[k])} for k in order]
+    return rho, entries
+
+
+# ---------------------------------------------------------------------------
+# Study orchestration
+# ---------------------------------------------------------------------------
 
 def _slot_doc_ids(roster, slot):
     """Roster doc ids of a slot in deterministic THEMES-then-entry order."""
@@ -262,3 +348,212 @@ def _centroids_for_slot(roster_tokens, slot, npz_path, weights):
     return cents, dropped
 
 
+def _concept_vectors(slot):
+    path = _ROOT / "languages" / slot / "models" / "english_gemma_whitened_768d.npz"
+    if not path.exists():
+        return None, f"MISSING cache: {path}"
+    data = np.load(str(path), allow_pickle=True)
+    lookup = {str(w): i for i, w in enumerate(data["vocab"])}
+    missing = [c for c in CONCEPTS if c not in lookup]
+    if missing:
+        return None, f"concepts missing from cache vocab: {missing}"
+    vecs = {c: data["vectors"][lookup[c]].astype(np.float64) for c in CONCEPTS}
+    return vecs, None
+
+
+def _shared_ladder(roster, slot_a, slot_b):
+    return [t for t in THEMES if roster[slot_a][t] and roster[slot_b][t]]
+
+
+def run():
+    rng = np.random.default_rng(SEED)
+    print("Loading corpora ...")
+    corpora = load_corpora()
+    roster, notes, roster_tokens = build_roster(corpora)
+
+    ROSTER_PATH.parent.mkdir(exist_ok=True)
+    with open(ROSTER_PATH, "w") as f:
+        json.dump({"seed": SEED, "slots": roster, "notes": notes}, f, indent=2,
+                  ensure_ascii=False)
+    print(f"Roster written: {ROSTER_PATH}")
+    for slot in SLOTS:
+        cells = ", ".join(f"{t}={len(roster[slot][t])}" for t in THEMES)
+        print(f"  {slot:<9} {cells}")
+
+    # SIF weights from slot-wide token counts (full corpus of each slot)
+    weights = {s: sif_weights(Counter(t for d in corpora["docs"][s].values()
+                                      for t in d)) for s in SLOTS}
+
+    native_cents, aligned_cents, fingerprints = {}, {}, {}
+    dropped_docs, fingerprint_status = {}, {}
+    for slot in SLOTS:
+        print(f"Computing centroids for {slot} ...")
+        native_path = (_ROOT / "languages" / slot / "models"
+                       / "fused_embeddings_1536d.npz")
+        aligned_path = (_ROOT / "languages" / slot / "final_output"
+                        / f"{slot}_aligned_gemma_vectors.npz")
+        native_cents[slot], drop_n = _centroids_for_slot(
+            roster_tokens, slot, native_path, weights[slot])
+        aligned_cents[slot], drop_a = _centroids_for_slot(
+            roster_tokens, slot, aligned_path, weights[slot])
+        dropped_docs[slot] = sorted(set(drop_n) | set(drop_a))
+        cvecs, err = _concept_vectors(slot)
+        fingerprint_status[slot] = err or "ok"
+        if cvecs is not None:
+            fingerprints[slot] = {
+                did: [round(_cos(v, cvecs[c]), 4) for c in CONCEPTS]
+                for did, v in aligned_cents[slot].items()}
+
+    results = {"seed": SEED, "n_null_draws": N_NULL_DRAWS,
+               "roster_ref": str(ROSTER_PATH.relative_to(_ROOT)),
+               "dropped_docs": dropped_docs}
+
+    # ---- Plane B (iii): slot-pair structural RSA on theme ladders ----
+    pair_rsa = {}
+    slot_pairs = [("hittite", "greek"), ("hittite", "sumerian"),
+                  ("greek", "sumerian")]
+    theme_cents = {}
+    for slot in SLOTS:
+        members = _members_by_theme(roster, slot)
+        theme_cents[slot] = {
+            t: np.mean([native_cents[slot][d] for d in ms
+                        if d in native_cents[slot]], axis=0)
+            for t, ms in members.items()}
+    for a, b in slot_pairs:
+        ladder = _shared_ladder(roster, a, b)
+        dropped = [t for t in THEMES if t not in ladder
+                   and (roster[a][t] or roster[b][t])]
+        A = theme_sim_matrix(theme_cents[a], ladder)
+        B = theme_sim_matrix(theme_cents[b], ladder)
+        out = rsa_permutation(A, B, rng=rng)
+        out.update({"ladder": ladder, "themes_dropped_from_ladder": dropped})
+        pair_rsa[f"{a}-{b}"] = out
+    results["slot_pair_rsa"] = pair_rsa
+    rho_hg = pair_rsa["hittite-greek"]["rho"]
+    rho_hs = pair_rsa["hittite-sumerian"]["rho"]
+    rho_gs = pair_rsa["greek-sumerian"]["rho"]
+    results["ie_gradient"] = {
+        "rho_hittite_greek": rho_hg, "rho_hittite_sumerian": rho_hs,
+        "rho_greek_sumerian": rho_gs,
+        "hittite_greek_highest": bool(rho_hg > rho_hs and rho_hg > rho_gs)}
+
+    # ---- Plane B (ii): doc-level positive control (kumarbi et al. vs Theogony) ----
+    ladder_hg = _shared_ladder(roster, "hittite", "greek")
+    members_h = _members_by_theme(roster, "hittite")
+    members_g = _members_by_theme(roster, "greek")
+    prof_h = {d: doc_profile(d, native_cents["hittite"], members_h, ladder_hg)
+              for d in _slot_doc_ids(roster, "hittite")
+              if d in native_cents["hittite"]}
+    prof_g = {d: doc_profile(d, native_cents["greek"], members_g, ladder_hg)
+              for d in _slot_doc_ids(roster, "greek")
+              if d in native_cents["greek"]}
+
+    theog = prof_g[GREEK_THEOGONY]
+    kumarbi = prof_h["kumarbi"]
+    noncosmo_h = [d for t in THEMES if t != "cosmogonic"
+                  for e in roster["hittite"][t]
+                  if (d := e["doc_id"]) in prof_h]
+    noncosmo_g = [d for t in THEMES if t != "cosmogonic"
+                  for e in roster["greek"][t]
+                  if (d := e["doc_id"]) in prof_g]
+    null = []
+    for _ in range(N_NULL_DRAWS):
+        d = noncosmo_h[rng.integers(len(noncosmo_h))]
+        null.append(spearmanr(prof_h[d], theog).statistic)
+    for _ in range(N_NULL_DRAWS):
+        d = noncosmo_g[rng.integers(len(noncosmo_g))]
+        null.append(spearmanr(kumarbi, prof_g[d]).statistic)
+    null = [r for r in null if not np.isnan(r)]
+
+    positive_control = {"ladder": ladder_hg, "n_null": len(null),
+                        "null_mean": round(float(np.mean(null)), 4),
+                        "pairs": {}}
+    for hdoc in ("kumarbi", "ullikummi", "illuyanka"):
+        rho = float(spearmanr(prof_h[hdoc], theog).statistic)
+        positive_control["pairs"][f"{hdoc}-theogony"] = {
+            "rho": round(rho, 4),
+            "percentile_in_null": round(percentile_in_null(rho, null), 2)}
+    results["positive_control"] = positive_control
+
+    # ---- Translation delta (within-language) ----
+    tdelta = {}
+    for slot in SLOTS:
+        ids = [d for d in _slot_doc_ids(roster, slot)
+               if d in native_cents[slot] and d in aligned_cents[slot]]
+        Nn = np.array([_unit(np.asarray(native_cents[slot][d], np.float64))
+                       for d in ids])
+        Na = np.array([_unit(np.asarray(aligned_cents[slot][d], np.float64))
+                       for d in ids])
+        rho, deltas = rank_delta_report(Nn @ Nn.T, Na @ Na.T, ids, top=5)
+        tdelta[slot] = {"n_docs": len(ids), "spearman": round(rho, 4),
+                        "largest_rank_deltas": deltas}
+    results["translation_delta"] = tdelta
+
+    # ---- Concept fingerprints (second-order Plane A) ----
+    fp_section = {"concepts": list(CONCEPTS), "status": fingerprint_status,
+                  "theme_mean_fingerprints": {}, "cosmogonic_cross_slot": {}}
+    theme_fp = {}
+    for slot in fingerprints:
+        theme_fp[slot] = {}
+        for t in THEMES:
+            fps = [fingerprints[slot][e["doc_id"]] for e in roster[slot][t]
+                   if e["doc_id"] in fingerprints[slot]]
+            if fps:
+                theme_fp[slot][t] = [round(float(x), 4)
+                                     for x in np.mean(fps, axis=0)]
+        fp_section["theme_mean_fingerprints"][slot] = theme_fp[slot]
+    for a, b in slot_pairs:
+        if a in theme_fp and b in theme_fp and \
+                "cosmogonic" in theme_fp[a] and "cosmogonic" in theme_fp[b]:
+            r = float(spearmanr(theme_fp[a]["cosmogonic"],
+                                theme_fp[b]["cosmogonic"]).statistic)
+            fp_section["cosmogonic_cross_slot"][f"{a}-{b}"] = round(r, 4)
+    results["concept_fingerprints"] = fp_section
+
+    results["notes"] = {
+        "plane_a": "direct cross-language cosine NO-GO (Gate 2 FAIL); concept "
+                   "fingerprints are second-order and within-language only",
+        "greek_magical": notes["greek"]["magical"]["reason_empty"],
+        "sumerian_magical": notes["sumerian"]["magical"]["reason_empty"],
+        "ladder_coarseness": "K=3 shared ladders give 3 upper-triangle values and "
+                             "6 exhaustive label permutations (min p = 0.1667)"}
+
+    with open(RESULTS_PATH, "w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+
+    # ---- summary ----
+    print("\n=== Positive control (Plane B doc-level, native space) ===")
+    print(f"ladder: {ladder_hg}  null draws kept: {len(null)} "
+          f"(mean rho {positive_control['null_mean']})")
+    for k, v in positive_control["pairs"].items():
+        print(f"  {k:<22} rho={v['rho']:+.3f}  percentile={v['percentile_in_null']:.1f}")
+    print("\n=== Slot-pair structural RSA (theme ladders, native space) ===")
+    for k, v in pair_rsa.items():
+        print(f"  {k:<18} rho={v['rho']:+.3f}  p={v['p']:.3f} "
+              f"(n_perms={v['n_perms']}, exhaustive={v['exhaustive']}) "
+              f"ladder={v['ladder']}")
+    print(f"  IE gradient (hittite-greek highest): "
+          f"{results['ie_gradient']['hittite_greek_highest']}")
+    print("\n=== Translation delta (native vs aligned, within-language) ===")
+    for slot, v in tdelta.items():
+        print(f"  {slot:<9} n={v['n_docs']:>2}  spearman={v['spearman']:+.3f}")
+    print("\n=== Cosmogonic concept-fingerprint cross-slot Spearman ===")
+    for k, v in fp_section["cosmogonic_cross_slot"].items():
+        print(f"  {k:<18} rho={v:+.3f}")
+    print(f"\nNOTE: {notes['greek']['magical']['reason_empty']}")
+    print(f"Saved to: {RESULTS_PATH}")
+    return results
+
+
+def main():
+    import argparse
+
+    p = argparse.ArgumentParser(description="Myth study (Plane B primary).")
+    p.add_argument("command", choices=("run",))
+    args = p.parse_args()
+    if args.command == "run":
+        run()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,345 @@
+{
+  "seed": 42,
+  "slots": {
+    "sumerian": {
+      "cosmogonic": [
+        {
+          "doc_id": "c141",
+          "n_tokens": 5237,
+          "n_lines": 440
+        },
+        {
+          "doc_id": "c174",
+          "n_tokens": 950,
+          "n_lines": 89
+        },
+        {
+          "doc_id": "c111",
+          "n_tokens": 3076,
+          "n_lines": 305
+        },
+        {
+          "doc_id": "c112",
+          "n_tokens": 2016,
+          "n_lines": 142
+        },
+        {
+          "doc_id": "c113",
+          "n_tokens": 4972,
+          "n_lines": 465
+        }
+      ],
+      "hymnic": [
+        {
+          "doc_id": "c4801",
+          "n_tokens": 5218,
+          "n_lines": 537
+        },
+        {
+          "doc_id": "c4141",
+          "n_tokens": 2753,
+          "n_lines": 256
+        },
+        {
+          "doc_id": "c4073",
+          "n_tokens": 3191,
+          "n_lines": 233
+        },
+        {
+          "doc_id": "c4061",
+          "n_tokens": 2157,
+          "n_lines": 208
+        },
+        {
+          "doc_id": "c4074",
+          "n_tokens": 2000,
+          "n_lines": 195
+        }
+      ],
+      "wisdom": [
+        {
+          "doc_id": "c623",
+          "n_tokens": 4064,
+          "n_lines": 519
+        },
+        {
+          "doc_id": "c6103",
+          "n_tokens": 2878,
+          "n_lines": 351
+        },
+        {
+          "doc_id": "c6101",
+          "n_tokens": 2706,
+          "n_lines": 350
+        }
+      ],
+      "royal_control": [
+        {
+          "doc_id": "c217",
+          "n_tokens": 10381,
+          "n_lines": 1300
+        },
+        {
+          "doc_id": "c223",
+          "n_tokens": 7308,
+          "n_lines": 524
+        },
+        {
+          "doc_id": "c25401",
+          "n_tokens": 4631,
+          "n_lines": 474
+        },
+        {
+          "doc_id": "c222",
+          "n_tokens": 6129,
+          "n_lines": 442
+        },
+        {
+          "doc_id": "c211",
+          "n_tokens": 2484,
+          "n_lines": 435
+        }
+      ],
+      "magical": []
+    },
+    "hittite": {
+      "cosmogonic": [
+        {
+          "doc_id": "kumarbi",
+          "n_tokens": 1024,
+          "n_lines": 265,
+          "components": [
+            "KBo 52.10+",
+            "KUB 47.56"
+          ]
+        },
+        {
+          "doc_id": "ullikummi",
+          "n_tokens": 917,
+          "n_lines": 231,
+          "components": [
+            "KBo 26.58",
+            "KBo 26.61"
+          ]
+        },
+        {
+          "doc_id": "illuyanka",
+          "n_tokens": 459,
+          "n_lines": 144,
+          "components": [
+            "KBo 3.7",
+            "KUB 17.5"
+          ]
+        }
+      ],
+      "hymnic": [
+        {
+          "doc_id": "KUB 24.3+",
+          "n_tokens": 800,
+          "n_lines": 188
+        },
+        {
+          "doc_id": "KUB 17.21+",
+          "n_tokens": 594,
+          "n_lines": 123
+        },
+        {
+          "doc_id": "KUB 24.1+",
+          "n_tokens": 450,
+          "n_lines": 92
+        },
+        {
+          "doc_id": "KUB 30.10",
+          "n_tokens": 463,
+          "n_lines": 57
+        },
+        {
+          "doc_id": "KUB 24.2",
+          "n_tokens": 251,
+          "n_lines": 42
+        }
+      ],
+      "wisdom": [],
+      "royal_control": [
+        {
+          "doc_id": "Privat 25",
+          "n_tokens": 535,
+          "n_lines": 457
+        },
+        {
+          "doc_id": "KUB 5.1+",
+          "n_tokens": 3379,
+          "n_lines": 423
+        },
+        {
+          "doc_id": "Bo 86_299",
+          "n_tokens": 2274,
+          "n_lines": 351
+        },
+        {
+          "doc_id": "KUB 1.1+",
+          "n_tokens": 1569,
+          "n_lines": 314
+        },
+        {
+          "doc_id": "KBo 3.5+",
+          "n_tokens": 1948,
+          "n_lines": 307
+        }
+      ],
+      "magical": [
+        {
+          "doc_id": "KBo 15.37",
+          "n_tokens": 1125,
+          "n_lines": 315
+        },
+        {
+          "doc_id": "KUB 15.34+",
+          "n_tokens": 1722,
+          "n_lines": 278
+        },
+        {
+          "doc_id": "KBo 4.2+",
+          "n_tokens": 1254,
+          "n_lines": 264
+        },
+        {
+          "doc_id": "KUB 27.1",
+          "n_tokens": 1737,
+          "n_lines": 263
+        },
+        {
+          "doc_id": "KBo 15.52+",
+          "n_tokens": 863,
+          "n_lines": 262
+        }
+      ]
+    },
+    "greek": {
+      "cosmogonic": [
+        {
+          "doc_id": "Hesiod (0020) - Theogony (001)",
+          "n_tokens": 6963
+        },
+        {
+          "doc_id": "Hesiod (0020) - Works and Days (002)",
+          "n_tokens": 5794
+        }
+      ],
+      "hymnic": [
+        {
+          "doc_id": "Hymns (0013) - Hymn 04 To Hermes (004)",
+          "n_tokens": 3978
+        },
+        {
+          "doc_id": "Hymns (0013) - Hymn 03 To Apollo (003)",
+          "n_tokens": 3774
+        },
+        {
+          "doc_id": "Hymns (0013) - Hymn 02 To Demeter (002)",
+          "n_tokens": 3270
+        },
+        {
+          "doc_id": "Hymns (0013) - Hymn 05 To Aphrodite (005)",
+          "n_tokens": 2047
+        },
+        {
+          "doc_id": "Hymns (0013) - Hymn 07 To Dionysus (007)",
+          "n_tokens": 425
+        }
+      ],
+      "wisdom": [],
+      "royal_control": [
+        {
+          "doc_id": "Homer (0012) - Iliad (001)",
+          "n_tokens": 111861
+        },
+        {
+          "doc_id": "Homer (0012) - Odyssey (002)",
+          "n_tokens": 87189
+        },
+        {
+          "doc_id": "Herodotus (0016) - Histories (001)",
+          "n_tokens": 184724
+        },
+        {
+          "doc_id": "Thucydides (0003) - History (001)",
+          "n_tokens": 150122
+        },
+        {
+          "doc_id": "Xenophon (0032) - Anabasis (006)",
+          "n_tokens": 56454
+        }
+      ],
+      "magical": []
+    }
+  },
+  "notes": {
+    "sumerian": {
+      "cosmogonic": {
+        "rule": "pinned: c141 Inanna's Descent, c174 Flood/Ziusudra, c111 Enki&Ninhursaga, c112 Enki&Ninmah, c113 Enki&World Order",
+        "reason_empty": null
+      },
+      "hymnic": {
+        "rule": "5 longest ETCSL class-4 (hymns) by line count",
+        "reason_empty": null
+      },
+      "wisdom": {
+        "rule": "3 longest ETCSL class-6 (proverbs) by line count",
+        "reason_empty": null
+      },
+      "royal_control": {
+        "rule": "5 longest ETCSL class-2 (royal) by line count",
+        "reason_empty": null
+      },
+      "magical": {
+        "rule": null,
+        "reason_empty": "inspected ETCSL class 0 and class 3: class 0 compositions are catalogues/incipit lists, class 3 are letters (u3-na-a-dug4 formula); no incantation content verified by inspection, so the slot is left empty"
+      }
+    },
+    "hittite": {
+      "cosmogonic": {
+        "rule": "merged joins: kumarbi = KBo 52.10+ + KUB 47.56 (CTH 344), ullikummi = KBo 26.58 + KBo 26.61 (CTH 345), illuyanka = KBo 3.7 + KUB 17.5 (CTH 321)",
+        "reason_empty": null
+      },
+      "hymnic": {
+        "rule": "arkuwar marker unusable (syllabic hyphenated transliteration, 0 matches); pinned known prayer tablets CTH 373-377, all verified present: KUB 24.3+, KUB 17.21+, KUB 24.1+, KUB 30.10, KUB 24.2",
+        "reason_empty": null
+      },
+      "wisdom": {
+        "rule": null,
+        "reason_empty": "no wisdom selection defined for hittite in this phase"
+      },
+      "royal_control": {
+        "rule": "5 longest non-myth texts (by line count), excluding SISKUR-marked ritual texts and docs already selected (brief's 'simply 5 longest non-myth' option)",
+        "reason_empty": null
+      },
+      "magical": {
+        "rule": "5 longest texts (by line count) containing the Sumerogram ritual marker 'SISKUR' (656 texts match), excluding docs already selected",
+        "reason_empty": null
+      }
+    },
+    "greek": {
+      "cosmogonic": {
+        "rule": "pinned: Hesiod Theogony + Works and Days",
+        "reason_empty": null
+      },
+      "hymnic": {
+        "rule": "5 longest Homeric Hymns entries (TLG author 0013) by token count",
+        "reason_empty": null
+      },
+      "wisdom": {
+        "rule": null,
+        "reason_empty": "Theognis and Hesiod fragments absent from the Diorisis extract"
+      },
+      "royal_control": {
+        "rule": "pinned substantial epic/prose narrative controls: Iliad, Odyssey, Herodotus Histories, Thucydides History, Xenophon Anabasis",
+        "reason_empty": null
+      },
+      "magical": {
+        "rule": null,
+        "reason_empty": "Greek Magical Papyri (PGM) are not in the Diorisis literary corpus; the Greek magical slot is EMPTY and every magical-theme comparison excludes Greek"
+      }
+    }
+  }
+}
