@@ -168,7 +168,7 @@ def download_blms_zip() -> Path:
     slug = BLMS_PROJECT.replace("/", "-")
     url = f"{ORACC_BASE_URL}/{slug}.zip"
     print(f"Downloading {url} ...")
-    resp = requests.get(url, timeout=600, verify=False, stream=True)
+    resp = requests.get(url, timeout=600, stream=True)
     resp.raise_for_status()
     total = int(resp.headers.get("content-length", 0))
     with open(BLMS_ZIP_PATH, "wb") as f:
