@@ -174,9 +174,22 @@ def test_hittite_merged_union_token_counts(roster_bundle):
 @needs_data
 def test_empty_themes_logged_with_reasons(roster_bundle):
     _, roster, notes, _ = roster_bundle
-    assert roster["sumerian"]["magical"] == []
-    assert notes["sumerian"]["magical"]["reason_empty"]
+    # Greek and Hittite wisdom remain empty; sumerian magical now populated from blms
     assert roster["greek"]["magical"] == []
     assert "PGM" in notes["greek"]["magical"]["reason_empty"]
     assert roster["greek"]["wisdom"] == []
     assert notes["greek"]["wisdom"]["reason_empty"]
+    assert roster["hittite"]["wisdom"] == []
+    assert notes["hittite"]["wisdom"]["reason_empty"]
+
+
+@needs_data
+def test_sumerian_magical_populated_from_blms(roster_bundle):
+    _, roster, notes, _ = roster_bundle
+    assert len(roster["sumerian"]["magical"]) > 0, (
+        "sumerian magical should be populated from blms incantation docs "
+        "(run 11_fetch_incantations.py if absent)")
+    assert notes["sumerian"]["magical"].get("rule"), (
+        "populated sumerian magical should carry a rule note")
+    for e in roster["sumerian"]["magical"]:
+        assert e["n_tokens"] >= 1, "every magical entry should have at least 1 token"
