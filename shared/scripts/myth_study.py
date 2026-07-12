@@ -503,6 +503,24 @@ def run():
         positive_control["pairs"][f"{hdoc}-theogony"] = {
             "rho": round(rho, 4),
             "percentile_in_null": round(percentile_in_null(rho, null), 2)}
+    null_arr = np.asarray(null, dtype=np.float64)
+    frac_at_half = float((null_arr == 0.5).sum()) / len(null_arr)
+    frac_at_one = float((null_arr == 1.0).sum()) / len(null_arr)
+    positive_control["named_controls"] = ["CTH 344 (kumarbi)", "CTH 345 (ullikummi)"]
+    positive_control["discreteness_note"] = (
+        f"3-point Spearman (K=3 ladder) takes only discrete values {{+/-1, +/-0.5, 0}}; "
+        f"~{round(frac_at_half * 100, 1):.1f}% of null draws tie at rho=+0.5 (the null "
+        f"mode). Named plan controls CTH 344 (kumarbi) and CTH 345 (ullikummi) both sit "
+        f"at the 58.98th percentile, equal to this null mode — not elevated above chance. "
+        f"Illuyanka (CTH 321, not a plan-named control) at the 90.15th percentile reaches "
+        f"the maximum attainable value under this discreteness (midrank over "
+        f"~{round(frac_at_one * 100, 1):.1f}% of null draws tied at rho=+1.0; equivalent "
+        f"one-tailed p~{round(frac_at_one, 2):.2f})."
+    )
+    positive_control["verdict"] = (
+        "FAIL — named controls at null mode; per plan, cross-language doc-level "
+        "claims narrow to within-language planes"
+    )
     results["positive_control"] = positive_control
 
     # ---- Translation delta (within-language) ----
@@ -538,6 +556,45 @@ def run():
             r = float(spearmanr(theme_fp[a]["cosmogonic"],
                                 theme_fp[b]["cosmogonic"]).statistic)
             fp_section["cosmogonic_cross_slot"][f"{a}-{b}"] = round(r, 4)
+    # F2: mismatched-theme cross-slot Spearman baseline
+    mismatch_baseline = {}
+    for a, b in slot_pairs:
+        if a not in theme_fp or b not in theme_fp:
+            continue
+        rhos = []
+        for ta in theme_fp[a]:
+            for tb in theme_fp[b]:
+                if ta == tb:
+                    continue
+                r = float(spearmanr(theme_fp[a][ta], theme_fp[b][tb]).statistic)
+                if not np.isnan(r):
+                    rhos.append(r)
+        if rhos:
+            mismatch_baseline[f"{a}-{b}"] = {
+                "mean": round(float(np.mean(rhos)), 4),
+                "max": round(float(np.max(rhos)), 4)}
+    fp_section["mismatched_baseline"] = mismatch_baseline
+    within_slot_baseline = {}
+    for slot in theme_fp:
+        themes = list(theme_fp[slot].keys())
+        rhos = []
+        for i, ta in enumerate(themes):
+            for tb in themes[i + 1:]:
+                r = float(spearmanr(theme_fp[slot][ta],
+                                    theme_fp[slot][tb]).statistic)
+                if not np.isnan(r):
+                    rhos.append(r)
+        if rhos:
+            within_slot_baseline[slot] = round(float(np.mean(rhos)), 4)
+    fp_section["within_slot_baseline"] = within_slot_baseline
+    fp_section["baseline_note"] = (
+        "matched-theme cosmogonic_cross_slot correlations must be read against the "
+        "mismatched-theme cross-slot baseline (theme_a != theme_b, per slot pair); "
+        "within-slot theme-theme means are provided as an upper reference. "
+        "Reviewer recomputation from committed data: mismatched mean 0.55-0.69, "
+        "max 0.87; within-slot (Sumerian/Greek) 0.87-0.94 — Hittite within-slot "
+        "is lower (~0.76) due to SISKUR-ritual construct mismatch in the magical theme."
+    )
     results["concept_fingerprints"] = fp_section
 
     _sum_magic = (notes["sumerian"]["magical"].get("rule") or
@@ -550,11 +607,35 @@ def run():
                  "K=3 shared ladders give 3 upper-triangle values and "
                  "6 exhaustive label permutations (min p = 0.1667)")
     results["notes"] = {
-        "plane_a": "direct cross-language cosine NO-GO (Gate 2 FAIL); concept "
-                   "fingerprints are second-order and within-language only",
+        "plane_a": ("direct cross-language cosine NO-GO (Gate 2 FAIL); "
+                    "within-language concept fingerprints (aligned space) are valid; "
+                    "cross-slot fingerprint-profile correlations in "
+                    "cosmogonic_cross_slot are second-order structure comparisons "
+                    "and must be read against the mismatched_baseline"),
         "greek_magical": notes["greek"]["magical"]["reason_empty"],
         "sumerian_magical": _sum_magic,
-        "ladder_coarseness": _lad_note}
+        "ladder_coarseness": _lad_note,
+        "null_resolution": (
+            "Doc-level positive-control null (2000 draws): support is <=25 distinct "
+            "pairings (15 non-cosmogonic Hittite + 10 non-cosmogonic Greek docs) "
+            "resampled with replacement — n_null overstates resolution. "
+            "This is also a mismatched-genre null (cosmogonic probe vs non-cosmogonic "
+            "draw); the plan's same-genre non-parallel null is infeasible with only "
+            "3 Hittite + 2 Greek cosmogonic docs."
+        ),
+        "construct_mismatch": (
+            "Sumerian 'magical' slot uses ORACC blms texts tagged Incantation or "
+            "Prayer/Incantation (bilingual incantation tablets); Hittite 'magical' "
+            "slot uses SISKUR-marker ritual texts (SISKUR = ritual prescription). "
+            "These are distinct text-type constructs, relevant to interpretation "
+            "of the K=4 hittite-sumerian rho=+0.314."
+        ),
+        "chronology": (
+            "blms texts are Late-Babylonian-period bilinguals (Neo-Babylonian / "
+            "Achaemenid era), chronologically later than the ETCSL literary corpus "
+            "(mainly Old Babylonian, ca. 2100-1700 BCE). Cross-period comparison is "
+            "an acknowledged limitation of the Sumerian magical slot."
+        )}
 
     with open(RESULTS_PATH, "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)

@@ -152,7 +152,7 @@ def compute_hit_stats(docs: list, vocab: dict) -> tuple:
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def locate_blms_zip() -> Path:
+def locate_blms_zip() -> Path | None:
     """Return path to blms ZIP: preferred sumerian location, then akkadian fallback."""
     if BLMS_ZIP_PATH.exists():
         return BLMS_ZIP_PATH
@@ -206,11 +206,11 @@ def main():
 
     if overall_rate < MIN_HIT_RATE_PCT:
         print(f"BLOCKED: vocab hit rate {overall_rate:.1f}% < {MIN_HIT_RATE_PCT}% threshold")
-        return
+        sys.exit(1)
 
     if not kept:
         print(f"BLOCKED: no docs with >={MIN_IN_VOCAB_TOKENS} in-vocab tokens")
-        return
+        sys.exit(1)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w") as f:

@@ -216,7 +216,6 @@ def _make_blms_zip(texts: list) -> bytes:
 def test_parse_incantation_zip_filters_by_genre():
     import io
     from pathlib import Path
-    from unittest.mock import patch
     from languages.sumerian.scripts.fetch_incantations_11 import parse_incantation_zip, load_catalogue
 
     # One incantation text, one ritual text
@@ -224,7 +223,6 @@ def test_parse_incantation_zip_filters_by_genre():
         ("P001", "Prayer/Incantation", ["an", "ki", "lugal"]),
         ("P002", "Ritual", ["ninda", "kasz"]),
     ])
-    tmp_zip = io.BytesIO(data)
 
     # Write to a real temp path for ZipFile
     import tempfile, os
