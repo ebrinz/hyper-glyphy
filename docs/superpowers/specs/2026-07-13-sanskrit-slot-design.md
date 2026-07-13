@@ -81,9 +81,9 @@ canonicals (the repo's verified pattern), with slot-name substitutions only.
 - DCS conllu is already IAST; normalize case/NFC only.
 - MW SLP1 → IAST at parse time via a small deterministic in-repo mapping
   table (no new dependency); covers the full SLP1 set including digraph
-  expansions (A→ā, i/I, u/U, f→ṛ, F→ṝ, x→ḷ, X→ḹ, M→ṃ, H→ḥ, K→kh, G→gh,
-  C→ch, J→jh, W→ṭh, Q→ḍh, T→th, D→dh, P→ph, B→bh, N→ṅ, Y→ñ, R→ṇ, w→ṭ,
-  q→ḍ, S→ś, z→ṣ, L→ḻ, ~→m̐).
+  expansions (A→ā, i/I, u/U, f→ṛ, F→ṝ, x→ḷ, X→ḹ, E→ai, O→au, M→ṃ, H→ḥ,
+  K→kh, G→gh, C→ch, J→jh, W→ṭh, Q→ḍh, T→th, D→dh, P→ph, B→bh, N→ṅ, Y→ñ,
+  R→ṇ, w→ṭ, q→ḍ, S→ś, z→ṣ, L→ḻ, ~→m̐).
 
 ## Anchor extraction — 06
 
@@ -119,8 +119,9 @@ interpretation only — the slot ships on the word-level suite regardless):**
 
 - Procrustes val cosine **≥ 0.20** ⇒ anchor quality WAS a binding constraint
   for the other slots; the stronger-anchors lever stays live.
-- **Within 0.06–0.12** ⇒ anchors were never the constraint ⇒ retire the
-  stronger-anchors lever, and with it the last named route to Plane A.
+- **≤ 0.12** (the existing slots' band or below) ⇒ anchors were never the
+  constraint ⇒ retire the stronger-anchors lever, and with it the last
+  named route to Plane A.
 - **Between 0.12 and 0.20** ⇒ inconclusive, stated as such.
 - No threshold adjustment after measurement; the verdict wording goes in the
   journal verbatim against these bands.
@@ -134,12 +135,14 @@ unparseable conllu lines are counted and reported in 01's output summary
 
 ## Testing
 
-- `tests/test_01_dcs.py` — conllu fixture → texts/lemmas JSON shape,
+All under `languages/sanskrit/tests/`:
+
+- `test_01_dcs.py` — conllu fixture → texts/lemmas JSON shape,
   sandhi-resolved FORM extraction, parse-loss accounting.
-- `tests/test_02_mw.py` — SLP1→IAST table (full digraph set), gloss
+- `test_02_mw.py` — SLP1→IAST table (full digraph set), gloss
   extraction from an MW XML fixture.
-- `tests/test_normalize.py` — IAST canonicalization idempotence, NFC.
-- `tests/test_06_anchors.py` — join logic, content-word gloss selection,
+- `test_normalize.py` — IAST canonicalization idempotence, NFC.
+- `test_06_anchors.py` — join logic, content-word gloss selection,
   schema including the `lemmas` field.
 - Cloned 04–10 verified by sed-diff against the Greek canonicals (the
   eval-redesign T7/T8 pattern), not re-tested line by line.
