@@ -63,8 +63,9 @@ Mirrors 09b's alpha-selection protocol:
    - **stable** — monosemous anchors: group by surface, keep surfaces with
      exactly one distinct gloss, dedupe (surface, gloss) rows. No frequency
      filter (fused-vocab membership already implies FastText min-count).
-     Report the Swadesh-207 intersection count as a diagnostic only —
-     pure Swadesh is too small to span a 768-d subspace.
+     Report the Swadesh-207 intersection count (list hardcoded in the
+     script) as a diagnostic only — pure Swadesh is too small to span a
+     768-d subspace.
 4. Score both on **val**: mean cosine of `x_val·W` vs the gold English
    Gemma vector. Winner refit on **train+val**. Val selection never sees
    Gate 2.
@@ -118,12 +119,16 @@ FAIL stays on record.
 
 ## Success criteria (pre-registered, unchanged from Gate 2)
 
-- **PASS:** parallel-retrieval MRR ≥ 0.1 AND all positive controls
-  (kumarbi-theogony, illuyanka-typhon, ullikummi-typhon) in the top
-  quartile (rank ≤ 205 of 820).
-- **Sanity diagnostic (not a criterion):** within-slot translation delta
-  on the Procrustes space — expected ρ ≈ 1 by isometry; materially lower
-  means projection loss and gets journaled.
+- **PASS:** as pre-registered in `myth_study_plan.md` §Gate 2 —
+  "parallel-text retrieval MRR ≥ 0.1, with the positive-control pair
+  ranking in the top quartile of its pool (top ~205 of 820)" — applied
+  to all three measured control pairs (kumarbi-theogony,
+  illuyanka-typhon, ullikummi-typhon).
+- **Isometry diagnostic (not a criterion):** computed in the fitter and
+  recorded in `procrustes_results.json` — Spearman ρ between the pairwise
+  cosine matrices of the val-anchor source vectors before vs after
+  mapping. Expected ρ ≈ 1 by construction; materially lower means
+  projection loss and gets journaled.
 - **On PASS:** Plane A reinstated for future claims; journal entry;
   `myth_study_plan.md` §7 status update. Making new Plane A myth-study
   claims is a follow-on project, not this one.
