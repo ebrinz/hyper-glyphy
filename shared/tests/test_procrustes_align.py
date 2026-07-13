@@ -1,11 +1,17 @@
+import json
+
 import numpy as np
 
 from shared.scripts.procrustes_align import (
+    EXPECTED_SOURCE_DIM,
+    EXPECTED_TARGET_DIM,
     SWADESH_207,
+    build_xy,
     fit_semi_orthogonal,
     isometry_rho,
     mean_cosine,
     monosemous_pairs,
+    run_slot,
     select_variant,
 )
 
@@ -88,3 +94,65 @@ def test_select_variant_prefers_higher_val_cosine_full_wins_ties():
 def test_swadesh_list_is_plausible():
     assert 180 <= len(SWADESH_207) <= 210
     assert {"water", "fire", "hand", "name", "night"} <= SWADESH_207
+
+
+def test_build_xy_skips_oov():
+    anchors = [{"x": "a", "english": "king"}, {"x": "zz", "english": "king"},
+               {"x": "b", "english": "zz"}]
+    src_vocab = {"a": 0, "b": 1}
+    eng_vocab = {"king": 0}
+    X, Y, valid = build_xy(anchors, "x", src_vocab, np.eye(2), eng_vocab, np.eye(1))
+    assert len(valid) == 1 and valid[0]["x"] == "a"
+    assert X.shape == (1, 2) and Y.shape == (1, 1)
+
+
+def _synthetic_slot(tmp_path, n_anchors=40):
+    """Minimal on-disk slot: fused npz, anchors json, gemma cache."""
+    rng = np.random.RandomState(7)
+    surfaces = [f"w{i}" for i in range(n_anchors)]
+    glosses = [f"g{i}" for i in range(n_anchors)]
+    slot_root = tmp_path / "toy"
+    (slot_root / "models").mkdir(parents=True)
+    (slot_root / "data" / "processed").mkdir(parents=True)
+    np.savez(slot_root / "models" / "fused_embeddings_1536d.npz",
+             vectors=rng.randn(n_anchors, EXPECTED_SOURCE_DIM).astype(np.float32),
+             vocab=np.array(surfaces))
+    gemma_cache = tmp_path / "english_gemma_whitened_768d.npz"
+    np.savez(gemma_cache,
+             vectors=rng.randn(n_anchors, EXPECTED_TARGET_DIM).astype(np.float32),
+             vocab=np.array(glosses))
+    anchors = [{"toy": s, "english": g} for s, g in zip(surfaces, glosses)]
+    with open(slot_root / "data" / "processed" / "english_anchors.json", "w") as f:
+        json.dump(anchors, f)
+    return slot_root, gemma_cache
+
+
+def test_run_slot_end_to_end(tmp_path, monkeypatch):
+    import shared.scripts.procrustes_align as pa
+    monkeypatch.setitem(pa.SLOTS, "toy", {"surface_key": "toy"})
+    slot_root, gemma_cache = _synthetic_slot(tmp_path)
+
+    results = run_slot("toy", slot_root, gemma_cache)
+
+    out_npz = slot_root / "final_output" / "toy_procrustes_gemma_vectors.npz"
+    w_npz = slot_root / "models" / "procrustes_W_gemma.npz"
+    res_json = slot_root / "results" / "procrustes_results.json"
+    assert out_npz.exists() and w_npz.exists() and res_json.exists()
+
+    W = np.load(w_npz)["W"]
+    assert W.shape == (EXPECTED_SOURCE_DIM, EXPECTED_TARGET_DIM)
+    assert np.allclose(W.T @ W, np.eye(EXPECTED_TARGET_DIM), atol=1e-6)
+
+    proj = np.load(out_npz)
+    assert proj["vectors"].shape == (40, EXPECTED_TARGET_DIM)
+    assert proj["vectors"].dtype == np.float32
+    assert list(proj["vocab"]) == [f"w{i}" for i in range(40)]
+
+    for key in ("slot", "variants", "chosen_variant", "isometry_rho_val",
+                "swadesh_diagnostic", "n_fit_pairs"):
+        assert key in results
+    assert results["chosen_variant"] in ("full", "stable")
+    assert set(results["variants"]) == {"full", "stable"}
+    for v in results["variants"].values():
+        assert set(v) >= {"n_pairs", "val_cosine"}
+    assert json.load(open(res_json)) == results

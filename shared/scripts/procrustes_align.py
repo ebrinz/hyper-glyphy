@@ -111,3 +111,120 @@ def isometry_rho(X, W, max_rows=1000, seed=42):
 def select_variant(variants):
     """Winning variant name by val cosine; 'full' wins ties."""
     return max(("full", "stable"), key=lambda n: variants[n]["val_cosine"])
+
+
+def build_xy(anchors, surface_key, src_vocab, src_vectors, eng_vocab, eng_vectors):
+    """Aligned X/Y rows for anchors present in both vocabularies
+    (same convention as 09b's build_training_data)."""
+    X, Y, valid = [], [], []
+    for a in anchors:
+        s, e = a[surface_key], a["english"]
+        if s in src_vocab and e in eng_vocab:
+            X.append(src_vectors[src_vocab[s]])
+            Y.append(eng_vectors[eng_vocab[e]])
+            valid.append(a)
+    if not X:
+        return np.array([]), np.array([]), []
+    return np.array(X), np.array(Y), valid
+
+
+def run_slot(slot, slot_root, gemma_cache):
+    """Fit both variants, select on val, refit winner on train+val,
+    project the full slot vocab, write artifacts. Returns the results dict."""
+    surface_key = SLOTS[slot]["surface_key"]
+
+    fused = np.load(str(slot_root / "models" / "fused_embeddings_1536d.npz"))
+    src_vectors = fused["vectors"]
+    src_vocab_list = [str(w) for w in fused["vocab"]]
+    src_vocab = {w: i for i, w in enumerate(src_vocab_list)}
+    assert src_vectors.shape[1] == EXPECTED_SOURCE_DIM, (
+        f"{slot}: fused dim {src_vectors.shape[1]}, expected {EXPECTED_SOURCE_DIM}")
+
+    gemma = np.load(str(gemma_cache))
+    eng_vectors = gemma["vectors"]
+    eng_vocab = {str(w): i for i, w in enumerate(gemma["vocab"])}
+    assert eng_vectors.shape[1] == EXPECTED_TARGET_DIM, (
+        f"gemma cache dim {eng_vectors.shape[1]}, expected {EXPECTED_TARGET_DIM}")
+
+    with open(slot_root / "data" / "processed" / "english_anchors.json") as f:
+        anchors = json.load(f)
+    # Word-level test split intentionally unused — never touched.
+    train_a, val_a, _ = group_split(anchors, surface_key=surface_key)
+
+    X_val, Y_val, val_valid = build_xy(
+        val_a, surface_key, src_vocab, src_vectors, eng_vocab, eng_vectors)
+    if not len(X_val):
+        raise SystemExit(f"{slot}: no valid val anchors — cannot select a variant")
+
+    pools = {"full": train_a, "stable": monosemous_pairs(train_a, surface_key)}
+    variants = {}
+    for name, pool in pools.items():
+        X, Y, valid = build_xy(
+            pool, surface_key, src_vocab, src_vectors, eng_vocab, eng_vectors)
+        if not len(X):
+            raise SystemExit(f"{slot}: variant '{name}' has zero valid pairs")
+        if name == "stable" and len(valid) < EXPECTED_TARGET_DIM:
+            print(f"WARNING: {slot} stable variant has {len(valid)} pairs "
+                  f"(< {EXPECTED_TARGET_DIM}) — rank-deficient subspace; "
+                  "val selection decides.", file=sys.stderr)
+        W = fit_semi_orthogonal(X, Y)
+        variants[name] = {"n_pairs": len(valid),
+                          "val_cosine": mean_cosine(X_val, Y_val, W)}
+        print(f"{slot} {name:<7} n={len(valid):>6}  "
+              f"val_cosine={variants[name]['val_cosine']:.4f}")
+
+    chosen = select_variant(variants)
+    fit_pool = train_a + val_a
+    if chosen == "stable":
+        fit_pool = monosemous_pairs(fit_pool, surface_key)
+    X_fit, Y_fit, fit_valid = build_xy(
+        fit_pool, surface_key, src_vocab, src_vectors, eng_vocab, eng_vectors)
+    W = fit_semi_orthogonal(X_fit, Y_fit)
+
+    results = {
+        "slot": slot,
+        "method": "semi-orthogonal procrustes (W = UVt of XtY), no scale",
+        "source_dim": EXPECTED_SOURCE_DIM,
+        "target_dim": EXPECTED_TARGET_DIM,
+        "target_cache": gemma_cache.name,
+        "split": {"method": "lemma-group", "seed": 42,
+                  "selection": "val mean cosine; winner refit on train+val; "
+                               "test split untouched"},
+        "variants": variants,
+        "chosen_variant": chosen,
+        "n_fit_pairs": len(fit_valid),
+        "isometry_rho_val": isometry_rho(X_val, W),
+        "swadesh_diagnostic": {
+            "n_fit_pairs_in_swadesh207":
+                sum(1 for a in fit_valid if a["english"] in SWADESH_207)},
+    }
+
+    (slot_root / "final_output").mkdir(parents=True, exist_ok=True)
+    (slot_root / "results").mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(slot_root / "models" / "procrustes_W_gemma.npz", W=W)
+    projected = (src_vectors @ W.astype(src_vectors.dtype)).astype(np.float32)
+    np.savez_compressed(
+        slot_root / "final_output" / f"{slot}_procrustes_gemma_vectors.npz",
+        vectors=projected, vocab=np.array(src_vocab_list))
+    with open(slot_root / "results" / "procrustes_results.json", "w") as f:
+        json.dump(results, f, indent=2)
+
+    print(f"{slot}: chose '{chosen}' (n_fit={len(fit_valid)}), "
+          f"isometry rho={results['isometry_rho_val']:.4f}")
+    return results
+
+
+def main():
+    import argparse
+
+    p = argparse.ArgumentParser(
+        description="Fit semi-orthogonal Procrustes maps (document-level plane).")
+    p.add_argument("--slot", choices=sorted(SLOTS), default=None,
+                   help="Single slot (default: all)")
+    args = p.parse_args()
+    for slot in ([args.slot] if args.slot else sorted(SLOTS)):
+        run_slot(slot, _ROOT / "languages" / slot, GEMMA_CACHE)
+
+
+if __name__ == "__main__":
+    main()
