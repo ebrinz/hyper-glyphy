@@ -210,6 +210,7 @@ def main():
         CAND_SIZE = args.cand_size
     cand_vectors, cand_vocab = load_candidates(art["meta"]["config"])
     suite = score_suite(art, cand_vectors, cand_vocab)
+    suite["cand_size"] = CAND_SIZE
     _print_suite(suite)
     out = Path(args.slot_dir) / "results" / f"eval_suite_{args.target}.json"
     with open(out, "w") as f:

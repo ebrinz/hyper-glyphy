@@ -185,7 +185,7 @@ def _slot_documents():
         out = {}
         for t in json.load(open(path)):
             toks = [normalizer(w) for line in t["lines"] for w in line.split()]
-            out[t["p_number"]] = [t for t in toks if t]
+            out[t["p_number"]] = [tok for tok in toks if tok]
         docs[slot] = out
     return docs
 

@@ -63,6 +63,8 @@ Active experiment log: [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md
 
 ## How It Works
 
+The sections below walk through Sumerian, the flagship slot; the other language slots follow the same pipeline structure (see their READMEs under `languages/`).
+
 ```
 Sumerian corpus (ETCSL + CDLI + ORACC)
         |
@@ -198,7 +200,7 @@ hyper-glyphy/
 │   ├── egyptian/          # Afroasiatic / hieroglyphic — shipped (pre-fix)
 │   ├── akkadian/          # East Semitic / cuneiform — shipped (pre-fix)
 │   ├── hittite/           # Indo-European (Anatolian) / cuneiform — shipped (pre-fix)
-│   └── greek/             # Indo-European / alphabetic — scaffold complete, run pending
+│   └── greek/             # Indo-European / alphabetic — shipped (eval-redesign suite)
 ├── framework/
 │   └── analysis/          # Language-agnostic anomaly atlas + analysis lenses
 ├── shared/
@@ -224,7 +226,7 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for queued workstreams.
 | [Egyptian](languages/egyptian/) | 34.57% | 33.42% | Afroasiatic / hieroglyphic |
 | [Akkadian](languages/akkadian/) | 36.43% | 27.79% | East Semitic / cuneiform |
 | [Hittite](languages/hittite/) | 40.62% | 35.40% | Indo-European (Anatolian) / cuneiform |
-| [Greek](languages/greek/) | — | — | Indo-European / alphabetic — scaffold complete, first run pending |
+| [Greek](languages/greek/) | — | — | Indo-European / alphabetic — ran post-fix only; see suite table above |
 
 ### Future language slots
 
@@ -233,7 +235,6 @@ using the same dual-target Ridge pipeline (GloVe 300d + whitened-Gemma 768d):
 
 | Slot | Period | Family / Script | Why it's interesting |
 |------|--------|-----------------|----------------------|
-| **Greek** | Archaic → Koine, ~800 BCE – 600 CE | Indo-European / alphabetic | Massive corpus (Perseus, TLG); a high-quality calibration slot where modern semantic encoders already perform well — sanity-check for the pipeline. |
 | **Ugaritic** | ~1400–1200 BCE | NW Semitic / alphabetic cuneiform | Tiny corpus but liturgically dense (Baal Cycle, KTU); sister branch to Akkadian, enables NW↔East Semitic alignment comparison. |
 | **Elamite** | ~2300 BCE – 5th c. BCE | language isolate / cuneiform (partially deciphered) | The "embedding archaeology" case — most ambitious slot. Even partial alignment would be a research finding. |
 | **Vedic** | ~1500–500 BCE (oral) | Old Indo-Aryan / Devanagari (late manuscripts) | Closest living-tradition ancient corpus; Grassmann's *Wörterbuch zum Rig-Veda* gives a clean anchor lexicon; pairs with Hittite for IE comparison. |

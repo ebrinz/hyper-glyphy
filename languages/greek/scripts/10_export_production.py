@@ -89,9 +89,9 @@ def main():
         "shared": {
             "vocab_size": len(akk_vocab),
             "greek_fused_dim": int(akk_vectors.shape[1]),
-            "random_state": gemma_cfg.get("random_state", glove_cfg.get("random_state", 42)),
+            "random_state": gemma_cfg.get("seed", glove_cfg.get("seed", 42)),
             "train_size": gemma_cfg.get("train_size", glove_cfg.get("train_size")),
-            "test_size_count": gemma_cfg.get("test_size_count", glove_cfg.get("test_size")),
+            "test_size_count": gemma_cfg.get("test_size", glove_cfg.get("test_size")),
             "valid_anchors": gemma_cfg.get("valid_anchors", glove_cfg.get("valid_anchors")),
             "total_anchors": gemma_cfg.get("total_anchors", glove_cfg.get("total_anchors")),
         },
