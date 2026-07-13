@@ -86,3 +86,18 @@ def test_mrr():
 
     # ranks are 1-based positions of the true parallel
     assert mean_reciprocal_rank([1, 2, 4]) == round((1 + 0.5 + 0.25) / 3, 4)
+
+
+def test_parallel_space_npz_resolution():
+    from shared.scripts.doc_eval import parallel_space_npz
+
+    ridge = parallel_space_npz("hittite", "ridge")
+    assert ridge.name == "hittite_aligned_gemma_vectors.npz"
+    assert ridge.parts[-3:-1] == ("hittite", "final_output")
+
+    proc = parallel_space_npz("greek", "procrustes")
+    assert proc.name == "greek_procrustes_gemma_vectors.npz"
+
+    import pytest
+    with pytest.raises(KeyError):
+        parallel_space_npz("hittite", "bogus")

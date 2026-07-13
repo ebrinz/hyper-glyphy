@@ -206,11 +206,23 @@ PARALLEL_PAIRS = [
 ]
 
 
-def run_parallels():
+SPACE_NPZ = {"ridge": "{slot}_aligned_gemma_vectors.npz",
+             "procrustes": "{slot}_procrustes_gemma_vectors.npz"}
+SPACE_RESULTS = {"ridge": "doc_eval_parallels.json",
+                 "procrustes": "doc_eval_parallels_procrustes.json"}
+
+
+def parallel_space_npz(slot, space):
+    """final_output npz for a slot under the given alignment space."""
+    return (_ROOT / "languages" / slot / "final_output"
+            / SPACE_NPZ[space].format(slot=slot))
+
+
+def run_parallels(space="ridge"):
     docs = _slot_documents()
     aligned = {}
     for slot in docs:
-        path = _ROOT / "languages" / slot / "final_output" / f"{slot}_aligned_gemma_vectors.npz"
+        path = parallel_space_npz(slot, space)
         if path.exists():
             aligned[slot] = _load_space(path)
 
@@ -252,8 +264,9 @@ def run_parallels():
                         "matched_a": a_ids[:5], "matched_b": b_ids[:5]})
         print(f"{label:<20} rank {rank}/{len(pool_ids)}")
 
-    out = {"pairs": results, "mrr": mean_reciprocal_rank(ranks) if ranks else None}
-    res = _ROOT / "shared" / "results" / "doc_eval_parallels.json"
+    out = {"space": space, "pairs": results,
+           "mrr": mean_reciprocal_rank(ranks) if ranks else None}
+    res = _ROOT / "shared" / "results" / SPACE_RESULTS[space]
     res.parent.mkdir(exist_ok=True)
     with open(res, "w") as f:
         json.dump(out, f, indent=2)
@@ -265,11 +278,13 @@ def main():
 
     p = argparse.ArgumentParser()
     p.add_argument("benchmark", choices=("genre", "parallels"))
+    p.add_argument("--space", choices=("ridge", "procrustes"), default="ridge",
+                   help="Alignment space for parallels (genre ignores this)")
     args = p.parse_args()
     if args.benchmark == "genre":
         run_genre()
     else:
-        run_parallels()
+        run_parallels(space=args.space)
 
 
 if __name__ == "__main__":
