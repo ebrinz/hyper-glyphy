@@ -4,6 +4,21 @@ Cross-language experiment log. Reverse chronological — newest at the top.
 
 ## Recent findings (newest first)
 
+## 2026-07-13 — Procrustes remap measured: Gate 2 FAIL on the semi-orthogonal plane.
+
+Per-slot semi-orthogonal maps (W = UVt of XtY, 1536→768, no scale; variants
+full/stable-monosemous selected on val cosine — chosen: sumerian full,
+hittite full, greek full; isometry rho ~1.0 for all three, ~0.99999999999,
+i.e. no projection loss) as a parallel document-level plane alongside the
+production Ridge maps. Val cosine at the chosen variant: sumerian 0.1157,
+hittite 0.0586, greek 0.1149. Fit pairs (train-only, from variant selection):
+sumerian 6163, hittite 5307, greek 63787 (train+val counts are in each slot's
+local `procrustes_results.json`, not tracked in git per repo convention).
+Parallel retrieval (Hittite→Greek, pool 820): kumarbi 526, illuyanka 798,
+ullikummi 796, MRR 0.0015 (Ridge: 731/781/788, MRR 0.0013). Verdict: FAIL —
+Plane A stays no-go; artifacts retained for future levers (stronger anchors).
+Spec: docs/superpowers/specs/2026-07-12-procrustes-remap-design.md.
+
 ## 2026-07-09 — Eval redesign shipped: stratified CSLS suite + document-level panel; all five slots measured (Greek first run).
 
 The eval-redesign pipeline (spec `docs/superpowers/specs/2026-07-06-eval-redesign.md`) replaces the broken single-stratum eval with a stratified CSLS retrieval suite and adds two document-level panels. Metric definitions: CSLS (k=10 mutual-neighbor reranking) over a 50K-candidate GloVe or Gemma English vocabulary; evaluation reports exact-match top-1/5/10 and synonym-credited top-1/5/10 (credit if the retrieved word shares any WordNet synset with the gold gloss); three regimes per run: **dictionary-in-sample** (a fixed 1,000-anchor sample of the training set — memorization of known glosses; test lemmas are never in train under the lemma-group split, so this regime is measured in-sample by design), **interpolation** (test anchors whose gold gloss appears among train+val targets), **zero-shot** (test anchors whose gold gloss was never a training target). All five slots ran on the same seed-42 64/16/20 lemma-group split (surface-casefold-group for Egyptian, which has no lemma key). Results are the first honest numbers for all five slots; Greek is a first-ever run (G1–G4 scaffold completed 2026-05-11).

@@ -70,7 +70,7 @@ Thematic concept fingerprints augment the pairwise matrix: each document centroi
 
 Gemma–GloVe agreement is used as a per-claim confidence signal. When both aligned spaces (whitened-Gemma 768d and GloVe 300d) assign a pair elevated similarity, the finding is treated as robust. Divergence between the two spaces flags a claim for scrutiny.
 
-**Current status of Plane A:** Gate 2 (parallel retrieval) failed. The cross-language retrieval geometry is non-discriminative: centroids are healthy within each language but cross-language cosines form a tight, low-variance blob (mean 0.252, std 0.024). Direct cross-language cosine similarities cannot distinguish thematically matched pairs from random same-genre pairs at the document level on current maps. Plane A cross-language cosine comparisons are therefore NO-GO pending a map quality improvement (e.g., Procrustes remap with more stable anchors, or a new alignment strategy). Within-language comparisons in aligned space remain valid and unaffected.
+**Current status of Plane A:** Gate 2 (parallel retrieval) failed. The cross-language retrieval geometry is non-discriminative: centroids are healthy within each language but cross-language cosines form a tight, low-variance blob (mean 0.252, std 0.024). Direct cross-language cosine similarities cannot distinguish thematically matched pairs from random same-genre pairs at the document level on current maps. A semi-orthogonal Procrustes remap was measured on 2026-07-13 (`shared/results/doc_eval_parallels_procrustes.json`) and did not clear Gate 2 either (MRR 0.0015; ranks 526, 798, 796 of 820). Plane A cross-language cosine comparisons remain NO-GO; the remaining lever is a stronger anchor set. Within-language comparisons in aligned space remain valid and unaffected.
 
 ### Plane B — Native Space (Second-Order RSA)
 
@@ -141,7 +141,7 @@ not in corpus coverage.
 
 Verdict: **FAIL (measured, with positive controls in play).**
 
-**Consequence for study design:** Plane A cross-language cosine claims are on hold. The study proceeds via Plane B (native-space RSA) as the primary method, which is unaffected by map quality. Cross-language conclusions must be grounded in structural convergence (Plane B) rather than direct distance (Plane A). Plane A is reinstated if alignment maps are improved via Procrustes remap or a stronger anchor set.
+**Consequence for study design:** Plane A cross-language cosine claims are on hold. The study proceeds via Plane B (native-space RSA) as the primary method, which is unaffected by map quality. Cross-language conclusions must be grounded in structural convergence (Plane B) rather than direct distance (Plane A). The Procrustes remap was measured on 2026-07-13 and did not clear Gate 2 (see §7); Plane A remains no-go, and the remaining lever is a stronger anchor set.
 
 **Word-level suite context (for calibration).** Dictionary strata accuracy ranges from 39–79% at top-1 across slots. Zero-shot is ~0–1% (test glosses never seen as training targets; the lemma-group split with near-surface edges eliminates surface-variant leakage). Gemma beats GloVe combined in 4 of 5 language slots. Known anomalies: Akkadian alpha-selection noise, Hittite candidate vocabulary covers only ~31% of its gold glosses. These constrain how much semantic precision can be expected from individual word-level embeddings, which propagates into document centroid quality.
 
@@ -153,7 +153,7 @@ Verdict: **FAIL (measured, with positive controls in play).**
 
 **Mayan.** Popol Vuh is a cosmogonic text with no genetic relationship to the Eurasian cluster. It is a candidate document-level null control only — expected to show low structural convergence with all five current slots. It is out of scope until the study design for the five primary slots is finalized.
 
-**Procrustes remap.** A Procrustes remap of native embeddings using a more stable anchor set (e.g., Swadesh-core concepts only, with coverage checks against actual in-vocab rates) is the most direct route to reinstating Plane A. This is a pipeline task, not a study task, and is listed in the roadmap as a prerequisite for future Plane A claims.
+**Procrustes remap.** A semi-orthogonal Procrustes remap (per-slot W = UVt of XtY, 1536→768, no scale) was fitted for sumerian/hittite/greek and measured against Gate 2 on 2026-07-13 (`shared/results/doc_eval_parallels_procrustes.json`): MRR 0.0015, ranks 526/798/796 of 820, versus PASS thresholds of MRR ≥ 0.1 and all ranks ≤ 205. It did not clear the gate — Plane A stays no-go. Artifacts are retained for future levers; the remaining route to reinstating Plane A is a stronger anchor set (e.g., Swadesh-core concepts only, with coverage checks against actual in-vocab rates).
 
 **Egyptian per-text segmentation.** Coffin Text spells and Book of the Dead chapters require the Egyptian corpus to be segmented into individual text units with IDs. The current cleaned corpus (heiroglyphy V15) is a monolithic file. Segmentation is a pipeline prerequisite before Egyptian can join the document-level study as a first-class slot rather than a future addition.
 

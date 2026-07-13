@@ -1,0 +1,42 @@
+{
+  "space": "procrustes",
+  "pairs": [
+    {
+      "pair": "kumarbi-theogony",
+      "rank": 526,
+      "pool_size": 820,
+      "matched_a": [
+        "KBo 52.10+",
+        "KUB 47.56"
+      ],
+      "matched_b": [
+        "Hesiod (0020) - Theogony (001)"
+      ]
+    },
+    {
+      "pair": "illuyanka-typhon",
+      "rank": 798,
+      "pool_size": 820,
+      "matched_a": [
+        "KBo 3.7",
+        "KUB 17.5"
+      ],
+      "matched_b": [
+        "Hesiod (0020) - Theogony (001)"
+      ]
+    },
+    {
+      "pair": "ullikummi-typhon",
+      "rank": 796,
+      "pool_size": 820,
+      "matched_a": [
+        "KBo 26.58",
+        "KBo 26.61"
+      ],
+      "matched_b": [
+        "Hesiod (0020) - Theogony (001)"
+      ]
+    }
+  ],
+  "mrr": 0.0015
+}
