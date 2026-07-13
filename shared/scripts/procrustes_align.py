@@ -115,7 +115,7 @@ def select_variant(variants):
 
 def build_xy(anchors, surface_key, src_vocab, src_vectors, eng_vocab, eng_vectors):
     """Aligned X/Y rows for anchors present in both vocabularies
-    (same convention as 09b's build_training_data)."""
+    (same in-vocab convention as 09b's val/test path; no FastText OOV fallback)."""
     X, Y, valid = [], [], []
     for a in anchors:
         s, e = a[surface_key], a["english"]

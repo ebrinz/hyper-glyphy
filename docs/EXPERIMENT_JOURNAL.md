@@ -9,8 +9,11 @@ Cross-language experiment log. Reverse chronological — newest at the top.
 Per-slot semi-orthogonal maps (W = UVt of XtY, 1536→768, no scale; variants
 full/stable-monosemous selected on val cosine — chosen: sumerian full,
 hittite full, greek full; isometry rho ~1.0 for all three, ~0.99999999999,
-i.e. no projection loss) as a parallel document-level plane alongside the
-production Ridge maps. Val cosine at the chosen variant: sumerian 0.1157,
+i.e. no projection loss — structural, not merely measured: the fused 1536d
+embeddings have exact rank 768 (FastText 768d + projected component), so a
+1536→768 semi-orthogonal map can capture the data subspace exactly; the FAIL is
+therefore not attributable to projection loss) as a parallel document-level
+plane alongside the production Ridge maps. Val cosine at the chosen variant: sumerian 0.1157,
 hittite 0.0586, greek 0.1149. Fit pairs (train-only, from variant selection):
 sumerian 6163, hittite 5307, greek 63787 (train+val counts are in each slot's
 local `procrustes_results.json`, not tracked in git per repo convention).
