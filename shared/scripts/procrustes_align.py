@@ -32,6 +32,7 @@ SLOTS = {
     "sumerian": {"surface_key": "sumerian"},
     "hittite": {"surface_key": "hittite"},
     "greek": {"surface_key": "greek"},
+    "sanskrit": {"surface_key": "sanskrit"},
 }
 
 # Swadesh-207 English glosses (diagnostic only — reported, never a filter).
