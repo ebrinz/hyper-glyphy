@@ -171,6 +171,34 @@ pytest languages/sumerian/tests/ shared/tests/ --ignore=languages/sumerian/tests
 | [ORACC](https://oracc.museum.upenn.edu/) | Lemmatized Sumerian with English glosses | 90K texts, 4.3M lemmas, 2.8K unique glosses |
 | [GloVe 6B](https://nlp.stanford.edu/projects/glove/) | Pre-trained English word vectors | 400K words, 300d |
 
+## Resources & Reproducibility
+
+All computed artifacts — trained FastText models, fused vectors, Ridge/Procrustes
+weights, English embedding caches, processed corpora, anchors, eval results, and
+production exports (~45GB) — are mirrored in a companion Hugging Face dataset repo:
+
+**[ebrinz/hyper-glyphy-artifacts](https://huggingface.co/datasets/ebrinz/hyper-glyphy-artifacts)**
+
+The mirror follows this repo's directory layout exactly (every mirrored path is
+gitignored here), so it bolts onto a fresh clone in one step:
+
+```bash
+bash shared/scripts/fetch_artifacts.sh   # hf download + recreate local symlinks
+```
+
+This reproduces published numbers **exactly** without retraining (FastText training
+is non-deterministic, so a retrain gives slightly different vectors). Load the
+gensim `.model` artifacts under the pinned environment (`requirements.lock.txt`,
+Python 3.12) — they are version-sensitive pickles.
+
+Notes:
+- Updates are incremental: `hf upload` is path-scoped and the backend deduplicates
+  at chunk level, so refreshing one slot never re-uploads the rest.
+- Raw third-party corpora are **not** mirrored (licensing varies by source);
+  each slot documents its fetch steps in `languages/<slot>/data/raw/README.md`.
+- MW-derived Sanskrit files in the mirror carry CC BY-NC-SA 3.0 (Cologne CDSL);
+  everything computed here is CC BY 4.0 — see the dataset card for the full map.
+
 ## Architecture
 
 Originated as a port of [heiroglyphy](https://github.com/ebrinz/heiroglyphy) V15 to Sumerian; has since diverged in significant ways (dual-target alignment, whitening, normalization fix, anomaly atlas):
