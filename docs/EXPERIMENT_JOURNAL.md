@@ -4,6 +4,67 @@ Cross-language experiment log. Reverse chronological — newest at the top.
 
 ## Recent findings (newest first)
 
+## 2026-07-16 — Sanskrit slot shipped: sixth language, and the pre-registered anchor-quality read-out FIRES.
+
+**Slot summary.** DCS (Digital Corpus of Sanskrit, CC BY 4.0): 15,790 chapter
+files parsed / 754,502 lines / 5,679,462 token-lemma records / 90,184 unique
+lemmas, parse loss 0.000% (0 of 6,713,257 token lines). Monier-Williams
+(Cologne CDSL 2020 digitization, mw.xml; CC BY-NC-SA 3.0 per mwheader.xml):
+177,323 deduplicated entries. Cleaned corpus: 15,790 lines / 5,679,462 tokens
+/ 381,412 unique tokens. FastText vocab (min_count=2): 195,309; fused
+195,309 x 1536d. Anchors (Task 6): token-level DCS-lemma→MW join hit rate
+94.9% (5,391,784 hits / 287,678 misses), 40% gate passed; gloss_no_eng
+145,119; total anchors 95,924; valid at fit time 90,176.
+
+**Disclosure.** Two deliberate deviations from the Greek/LSJ recipe, both
+user-approved 2026-07-14. (1) **06's negation-gloss rule:** glosses hitting
+a negator (not/no/without/never) before an in-vocab content word are
+skipped entirely and fall through to the next gloss segment — rationale is
+survey finding A1, driven by MW's privative compounds (e.g. `ahiṃsā`:
+"not injuring anything" anchors to "harmlessness", never to "injuring").
+This is the only extraction-recipe deviation from Greek/LSJ. (2) 05 is a
+new thin IAST tokenizer, not a clone of the Greek ATF-cleaner — the spec's
+own architecture section describes 05 as "sanskrit_normalize on FORM
+stream," which the ATF machinery doesn't implement. Separately, the anchor
+noise profile was kept as-is per user decision 2026-07-15: 3,379 anchors →
+"see" (MW cross-references, 3.5%), 2,279 single-letter English tokens
+(2.4%), and scaffold words in the frequent tail (having/relating/rarely/
+belonging) — an inherited Greek-recipe noise class, kept for
+cross-slot comparability rather than cleaned up specially for Sanskrit.
+
+**Word-level suite** (Task 9; seed 42, lemma-group split with near-surface
+edges, 50,000 candidates). Split: train 61,391 / val 12,490 valid / test
+16,295 valid (raw 15,348/19,185); oov_train_only 3,557. Leak check: 0.00%
+(0/19,185, shared gloss + surface edit distance ≤1 vs train).
+
+| Target | alpha | Dict n | Dict top-1 | Dict syn | Interp n | Interp top-1 | Interp syn | Zero-shot n | Zero-shot top-1 | Zero-shot syn | Combined n | Combined top-1 | Combined syn |
+|--------|-------|-------:|:----------:|:--------:|---------:|:-------------:|:----------:|------------:|:----------------:|:--------------:|-----------:|:---------------:|:------------:|
+| GloVe 300d | 1.0 | 955 | 33.51% | 35.92% | 12,863 | 2.55% | 4.12% | 2,168 | 0.23% | 1.38% | 15,031 | 2.22% | 3.73% |
+| Gemma whitened 768d | 1000 | 955 | 44.40% | 47.23% | 12,863 | 4.35% | 6.84% | 2,168 | 0.74% | 2.26% | 15,031 | 3.83% | 6.18% |
+
+Gemma dictionary top-5/top-10: 56.75%/58.01% exact, 59.27%/60.94% syn;
+combined top-5/top-10: 7.49%/9.75% exact, 11.28%/14.58% syn. GloVe combined
+`gold_oov_candidates`: 1,264. Gemma beats GloVe combined: +1.62pp top-1 /
++2.14pp top-5 / +2.60pp top-10 (now 5 of 6 slots).
+
+**Procrustes read-out** (Task 10, commit a5ecc08). Sanskrit joins the
+semi-orthogonal-plane anchor-quality test as the stronger-anchors condition
+(94.9% hit rate vs the other slots' thinner joins). Variants: full 0.11451
+(n=57,834) / stable 0.11422 (n=53,538); chose full; n_fit 70,324; isometry
+rho 1.0000; target `english_gemma_whitened_768d`. Val cosine **0.1145**
+falls in the pre-registered **≤ 0.12** band (the existing slots' band or
+below ⇒ anchors were never the constraint). Bands, restated from the
+2026-07-13 design spec: val cosine ≥ 0.20 ⇒ anchor quality was a binding
+constraint and the stronger-anchors lever stays live; ≤ 0.12 ⇒ anchors were
+never the constraint; between 0.12 and 0.20 ⇒ inconclusive. Pre-registered
+verdict, applied verbatim per the spec: **"anchors were never the
+constraint ⇒ retire the stronger-anchors lever, and with it the last named
+route to Plane A."** Reference slots: sumerian 0.1157 / greek 0.1149 /
+hittite 0.0586; sanskrit 0.1145 — three-slot convergence (sumerian, greek,
+sanskrit) at ~0.115 despite very different corpus and lexicon quality
+suggests a structural ceiling on the semi-orthogonal plane, not anchor
+quality; hittite's lower 0.0586 remains unexplained by this test.
+
 ## 2026-07-13 — Procrustes remap measured: Gate 2 FAIL on the semi-orthogonal plane.
 
 Per-slot semi-orthogonal maps (W = UVt of XtY, 1536→768, no scale; variants

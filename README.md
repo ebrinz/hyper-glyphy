@@ -34,6 +34,8 @@ The table below reports the **eval-redesign suite** (stratified CSLS, 50K candid
 | [Hittite](languages/hittite/) | Gemma | 1e-4 | 79.61% | 10.53% | 0.00% ² | 6.83% | 8.05% | Indo-European (Anatolian) / cuneiform |
 | [Greek](languages/greek/) | GloVe | 1e-4 | 39.05% | 4.06% | 0.40% | 3.31% | 5.67% | Indo-European / alphabetic |
 | [Greek](languages/greek/) | Gemma | 0.1 | 52.49% | 5.33% | 0.68% | 4.37% | 7.42% | Indo-European / alphabetic |
+| [Sanskrit](languages/sanskrit/) | GloVe | 1.0 | 33.51% | 2.55% | 0.23% | 2.22% | 3.73% | Indo-European (Indo-Aryan) / Devanagari (IAST) |
+| [Sanskrit](languages/sanskrit/) | Gemma | 1000 | 44.40% | 4.35% | 0.74% | 3.83% | 6.18% | Indo-European (Indo-Aryan) / Devanagari (IAST) |
 
 ¹ Akkadian Gemma alpha=1e4 is the grid ceiling (val-selection noise at ~0.06%); see journal 2026-07-09 entry.
 ² Hittite zero-shot n=144; 69% of test gold glosses are OOV of the 50K candidate vocab; see journal 2026-07-09 entry.
@@ -237,7 +239,6 @@ using the same dual-target Ridge pipeline (GloVe 300d + whitened-Gemma 768d):
 |------|--------|-----------------|----------------------|
 | **Ugaritic** | ~1400–1200 BCE | NW Semitic / alphabetic cuneiform | Tiny corpus but liturgically dense (Baal Cycle, KTU); sister branch to Akkadian, enables NW↔East Semitic alignment comparison. |
 | **Elamite** | ~2300 BCE – 5th c. BCE | language isolate / cuneiform (partially deciphered) | The "embedding archaeology" case — most ambitious slot. Even partial alignment would be a research finding. |
-| **Vedic** | ~1500–500 BCE (oral) | Old Indo-Aryan / Devanagari (late manuscripts) | Closest living-tradition ancient corpus; Grassmann's *Wörterbuch zum Rig-Veda* gives a clean anchor lexicon; pairs with Hittite for IE comparison. |
 | **Aramaic** | ~1100 BCE – present (target: Imperial + Biblical) | NW Semitic / alphabetic (square script + variants) | Bridge language across the Persian/Hellenistic/Roman Near East; massive epigraphic corpus from Persepolis to the Cairo Geniza. |
 
 The DCCLT bridge data (50k Sumerian↔Akkadian pairs) and similar bilingual lexical

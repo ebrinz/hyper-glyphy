@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "methodology": "Cuneiformy-Sanskrit dual-view (Sanskrit 1536d -> whitened-EmbeddingGemma 768d primary, GloVe 300d secondary)",
+  "shared": {
+    "vocab_size": 195309,
+    "sanskrit_fused_dim": 1536,
+    "random_state": 42,
+    "train_size": 73881,
+    "test_size_count": 16295,
+    "valid_anchors": 90176,
+    "total_anchors": 95924
+  },
+  "spaces": {
+    "gemma": {
+      "dim": 768,
+      "dtype": "float16",
+      "ridge_alpha": 1000.0,
+      "ridge_source": "models/ridge_weights_gemma_whitened.npz",
+      "target_source": "models/english_gemma_whitened_768d.npz",
+      "whitening_transform": "models/gemma_whitening_transform.npz",
+      "encoder_model": "google/embeddinggemma-300m",
+      "encoder_prompt": "Retrieval-document",
+      "gloss_source": "WordNet first synset",
+      "gloss_hit_rate_pct": null,
+      "accuracy": {
+        "top1": 3.832080367241035,
+        "top5": 7.491184884571885,
+        "top10": 9.753176768012773
+      }
+    },
+    "glove": {
+      "dim": 300,
+      "dtype": "float16",
+      "ridge_alpha": 1.0,
+      "ridge_source": "models/ridge_weights.npz",
+      "target_source": "data/processed/glove.6B.300d.txt",
+      "accuracy": {
+        "top1": 2.215421462311223,
+        "top5": 5.355598429911517,
+        "top10": 7.151886102055752
+      }
+    }
+  }
+}
