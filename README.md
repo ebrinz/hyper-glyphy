@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Cross-lingual embedding alignment for ancient languages — five language slots, one shared pipeline</strong>
+  <strong>Cross-lingual embedding alignment for ancient languages — six language slots, one shared pipeline</strong>
 </p>
 
 <p align="center">

@@ -22,7 +22,7 @@ full measured writeup.
 94.9% (5,391,784 hits / 287,678 misses), 40% gate passed; 90,176 valid at
 fit time. Split via the shared lemma-group union-find (`anchor_split.py`):
 64/16/20 train/val/test, seed 42. Anchor extraction applies the
-negation-gloss rule (see "Deliberate deviations" above): glosses hitting a
+negation-gloss rule (see "Deliberate deviations" below): glosses hitting a
 negator before an in-vocab content word skip to the next gloss segment.
 
 ## Word-level suite
@@ -81,11 +81,12 @@ anchors were never the binding constraint on the semi-orthogonal plane.
 
 ## Deliberate deviations from the Greek recipe
 
-1. **FORM-stream tokenization.** FastText (07, not yet run) will train on
-   the sandhi-resolved FORM stream from the conllu, not the lemma stream —
-   this is the Greek convention, kept spec-locked to keep the anchor-quality
-   comparison against the other five slots unconfounded. See the design
-   spec, "Scope."
+1. **FORM-stream tokenization.** FastText (07) trains on the sandhi-resolved
+   FORM stream from the conllu, not the lemma stream — this is the Greek
+   convention, kept spec-locked to keep the anchor-quality comparison
+   against the other five slots unconfounded. See the design spec, "Scope."
+   Real run: 768d skip-gram, window 10, min_count 2, epochs 10, sg 1;
+   vocab 195,309.
 2. **06's negation-gloss rule.** MW glosses that begin with a negation-led
    segment (e.g. `ahiṃsā` → `"not injuring anything"`) fall through to the
    next gloss segment (`"harmlessness"`) when 06 selects the anchor's
@@ -112,16 +113,33 @@ a `gloss_first` ending in a typographic quote (’) or containing no letters
 | `01_parse_dcs.py` | Parse DCS conllu → token-lemma records + per-chapter texts |
 | `02_parse_mw.py` | Parse Monier-Williams XML (SLP1 → IAST) → Sanskrit-English gloss pairs |
 | `sanskrit_normalize.py` | IAST canonicalization (NFC, lowercase) used by 01/02 and downstream |
-
-Scripts 04–10 (deduplicate, normalize/tokenize, extract anchors, train
-FastText, fuse, align+evaluate x2, export) are not yet created for this
-slot — they land as sed-clones of the Greek canonicals in later tasks.
+| `04_deduplicate_corpus.py` | Deduplicate corpus lines |
+| `05_clean_and_tokenize.py` | Normalize the DCS FORM stream for FastText — a thin IAST tokenizer, not the Greek/Sumerian ATF-cleaning clone |
+| `06_extract_anchors.py` | Join DCS lemmas with MW glosses → anchor pairs; carries the negation-gloss rule and the 40% hit-rate gate |
+| `07_train_fasttext.py` | Train 768d FastText skip-gram embeddings |
+| `08_fuse_embeddings.py` | Zero-pad fusion [768d \| 000...768d] → 1536d |
+| `09_align_and_evaluate.py` | Ridge regression → GloVe 300d |
+| `align_09.py` | Shared helper module re-exporting 09's training/evaluation functions for reuse by 09b |
+| `09b_align_gemma.py` | Ridge regression → whitened Gemma 768d |
+| `10_export_production.py` | Dual-view production export (GloVe 300d + whitened Gemma 768d) |
 
 ## Running
+
+Data-fetch steps (sparse-clone DCS, download/unzip MW) precede 01/02 — see
+"Corpus" above for the exact commands. Full reproduction order:
 
 ```bash
 python languages/sanskrit/scripts/01_parse_dcs.py
 python languages/sanskrit/scripts/02_parse_mw.py
+python languages/sanskrit/scripts/04_deduplicate_corpus.py
+python languages/sanskrit/scripts/05_clean_and_tokenize.py
+python languages/sanskrit/scripts/06_extract_anchors.py
+python languages/sanskrit/scripts/07_train_fasttext.py
+python languages/sanskrit/scripts/08_fuse_embeddings.py
+python languages/sanskrit/scripts/09_align_and_evaluate.py
+python languages/sanskrit/scripts/09b_align_gemma.py --mode whitened
+python languages/sanskrit/scripts/10_export_production.py
+python shared/scripts/procrustes_align.py --slot sanskrit
 ```
 
 ## Tests
