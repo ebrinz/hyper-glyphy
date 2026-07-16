@@ -1,5 +1,6 @@
 # Data (too large for git)
-languages/*/data/raw/
+languages/*/data/raw/*
+!languages/*/data/raw/README.md
 languages/*/data/processed/
 languages/*/data/dictionaries/
 

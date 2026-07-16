@@ -125,6 +125,14 @@ lookup.find_blend({"sun": 0.7, "power": 0.3}, space="gemma")
 pip install -r requirements.txt
 ```
 
+### Environment
+
+Python 3.12.3 (pyenv). `pip install -r requirements.txt` installs floor-pinned
+dependencies; `pip install -r requirements.lock.txt` reproduces the exact
+environment that produced the committed artifacts (gensim 4.4.0, numpy 2.3.5,
+scikit-learn 1.7.0). The gensim FastText `.model` artifacts (HF mirror) are
+version-sensitive pickles — use the lockfile when loading them.
+
 ### Full Pipeline
 
 ```bash
