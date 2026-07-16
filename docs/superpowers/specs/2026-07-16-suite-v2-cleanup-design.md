@@ -67,6 +67,13 @@ def first_english(gloss: str, eng_vocab: set[str]) -> str | None:
     Callers fall through to the entry's next gloss on None (existing
     glosses[1:5] convention, unchanged)."""
 
+DE_NEGATORS = {"nicht", "kein", "keine", "keinen", "ohne", "nie", "niemals"}
+
+def gw_is_usable(value: str, negators: set[str] = NEGATORS) -> bool:
+    """For value-based slots: reject negation-led, xref-led, single-letter,
+    and scaffold/stopword-only gw/english values. No vocab check (that stays
+    at fit time, as today)."""
+
 def hit_rate_stats(hits: int, misses: int, gloss_no_eng: int, anchors: int) -> dict:
     """Canonical anchor_stats payload: {*_hits, *_misses, token_hit_rate,
     gloss_no_eng, anchors}. Persisted by every 06 before any gate check."""
@@ -80,15 +87,31 @@ are deliberately NOT scaffold words. Single-letter handling is skip-and-
 continue (a later real word can still anchor the gloss), unlike negation/xref
 which reject the whole gloss.
 
-### 2. Per-slot 06 refactor
+### 2. Per-slot 06 refactor — two slot families (amended 2026-07-16 after code survey)
 
-Each `languages/<slot>/scripts/06_extract_anchors.py` (and equivalent) drops
-its local STOP_WORDS/`_load_gloss_first_english` and calls
-`gloss_filters.first_english`; join logic, sources, schemas, and
-`MIN_OCCURRENCES = 5` are unchanged. Every 06 now persists `anchor_stats.json`
-and runs the gate (Sanskrit behavior promoted). Sanskrit's own 06 is
-refactored to import the module; its negation unit tests move to the shared
-test file, its source-specific tests stay.
+The gloss-prose scan (`_load_gloss_first_english`) exists only in Greek and
+Sanskrit. The module therefore exposes two entry points:
+
+- **Dictionary-join slots (greek, sanskrit):** drop local
+  STOP_WORDS/`_load_gloss_first_english`, call `gloss_filters.first_english`;
+  adopt the `(anchors, stats)` return + `anchor_stats.json` + 40% hit-rate
+  gate (Sanskrit behavior promoted). Join logic, sources, schemas,
+  `MIN_OCCURRENCES = 5` unchanged.
+- **Value-based slots (sumerian ePSD2 source, akkadian, hittite, egyptian):**
+  their English comes as a short `gw`/`english` value, not gloss prose; they
+  additionally call `gloss_filters.gw_is_usable(value, negators=...)` on top
+  of their existing junk filters — rejecting negation-led, xref-led,
+  single-letter, and scaffold/stopword-only values. Hittite passes
+  `DE_NEGATORS` (its glosses are German; a negated German gloss embeds near
+  its antonym through the translation step — same A1 bug). Each writes
+  `anchor_stats.json` with its counts; the 40% join gate applies only to the
+  dictionary-join slots (value slots have no equivalent join rate).
+  Sumerian's co-occurrence source (statistical, own stop-word set) is
+  deliberately untouched. Egyptian's 09-side `filter_stopword_glosses`
+  (German extras) stays as its documented variant delta.
+
+Sanskrit's negation unit tests move to the shared test file; slot-specific
+tests stay per slot.
 
 ### 3. Alpha selection v2 — canonical 09/09b + clones
 
