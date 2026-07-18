@@ -846,7 +846,7 @@ Sanskrit's derivation therefore adds ONE extra substitution:
 
 ```bash
 sed -e "s/akkadian/sanskrit/g" -e "s/Akkadian/Sanskrit/g" \
-    -e "s/fasttext_sumerian/fasttext_sanskrit/g" \
+    -e "s/sumerian/sanskrit/g" -e "s/Sumerian/Sanskrit/g" \
   languages/akkadian/scripts/$f > languages/sanskrit/scripts/$f
 ```
 
