@@ -108,6 +108,15 @@ def val_top1_csls(Y_pred_val, val_golds, cand_vectors, cand_vocab):
     return r["top1"]["exact"]
 
 
+def val_topk_csls(Y_pred_val, val_golds, cand_vectors, cand_vocab):
+    """Val top-1 and top-5 CSLS exact (%, restricted candidates). The alpha
+    selector (suite v2) selects on top-5 — ~5x the signal of top-1 on weak
+    slots — and records both."""
+    r = score_regime(Y_pred_val, val_golds, cand_vectors, cand_vocab,
+                     query_pool=Y_pred_val, ks=(1, 5))
+    return r["top1"]["exact"], r["top5"]["exact"]
+
+
 def score_suite(artifacts, cand_vectors, cand_vocab):
     """Full suite from an artifact bundle (see load_artifacts, Task 3)."""
     pool = np.vstack([artifacts["Q_train"], artifacts["Q_val"], artifacts["Q_test"]])

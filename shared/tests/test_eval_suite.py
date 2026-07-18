@@ -56,6 +56,7 @@ from shared.scripts.eval_suite import (
     stratify,
     synonym_set,
     val_top1_csls,
+    val_topk_csls,
 )
 
 
@@ -102,6 +103,13 @@ def test_val_top1_csls():
     C, vocab = _identity_setup()
     acc = val_top1_csls(C[[0, 2]], ["king", "reed"], C, vocab)
     assert acc == 100.0
+
+
+def test_val_topk_returns_top1_and_top5():
+    C, vocab = _identity_setup()
+    topk = val_topk_csls(C[[0, 2]], ["king", "reed"], C, vocab)
+    assert topk[0] == val_top1_csls(C[[0, 2]], ["king", "reed"], C, vocab)
+    assert topk[1] >= topk[0]
 
 
 def test_artifact_roundtrip(tmp_path):

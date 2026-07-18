@@ -1,5 +1,5 @@
 """
-Ridge Alignment & Evaluation: Map Sanskrit embeddings to GloVe English space.
+Ridge Alignment & Evaluation: Map Sumerian embeddings to GloVe English space.
 
 Pipeline:
   1. Load fused 1536d Sanskrit vectors
@@ -32,6 +32,7 @@ from shared.scripts.eval_suite import (
     score_suite,
     stratify,
     val_top1_csls,
+    val_topk_csls,
 )
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
@@ -67,7 +68,7 @@ def build_training_data(
         pad_dim = 0
 
     for anchor in anchors:
-        s_word = anchor.get("sanskrit") or anchor.get("sanskrit")
+        s_word = anchor.get("sanskrit") or anchor.get("sumerian")
         e_word = anchor["english"]
         if e_word not in eng_vocab:
             continue
@@ -138,27 +139,35 @@ def select_alpha(
     X_train, Y_train, X_val, val_english, eng_vocab_list, eng_vectors,
     alphas, predict_transform=None,
 ):
-    """Pick the Ridge alpha with the best top-1 on the validation set.
+    """Pick the Ridge alpha by val top-5 CSLS; plateau ties -> lowest alpha.
+
+    Suite v2 rule: scores within one anchor's worth (100/n_val percentage
+    points) of the max form a plateau, and the LOWEST alpha on it wins —
+    less regularization preserves the dictionary stratum. Fixes the v1
+    failure mode where a flat-noise sweep picked alpha=1e4 by a one-anchor
+    margin (journal 2026-07-09, Sanskrit-Gemma).
 
     predict_transform: optional callable applied to raw predictions before
     evaluation (Egyptian's PCA path lifts 256d back to 768d with it).
     Returns (best_alpha, sweep_records).
     """
     sweep = []
-    best_alpha, best_top1 = None, -1.0
     for alpha in tqdm(alphas, desc="alpha sweep", file=sys.stderr,
                       disable=not sys.stderr.isatty()):
         model = train_ridge(X_train, Y_train, alpha=alpha)
         Y_pred = model.predict(X_val)
         if predict_transform is not None:
             Y_pred = predict_transform(Y_pred)
-        top1 = val_top1_csls(
+        top1, top5 = val_topk_csls(
             Y_pred, val_english, eng_vectors[:CAND_SIZE], eng_vocab_list[:CAND_SIZE]
         )
-        sweep.append({"alpha": alpha, "val_top1_csls_exact": top1})
-        print(f"  alpha={alpha:<10g} val top1 (CSLS/50k)={top1:.2f}%")
-        if top1 > best_top1:
-            best_alpha, best_top1 = alpha, top1
+        sweep.append({"alpha": alpha, "val_top1_csls_exact": top1,
+                      "val_top5_csls_exact": top5})
+        print(f"  alpha={alpha:<10g} val top5 (CSLS/50k)={top5:.2f}%  top1={top1:.2f}%")
+    best_top5 = max(r["val_top5_csls_exact"] for r in sweep)
+    plateau_eps = 100.0 / max(1, len(val_english))  # one anchor, in pp
+    best_alpha = min(r["alpha"] for r in sweep
+                     if r["val_top5_csls_exact"] >= best_top5 - plateau_eps)
     return best_alpha, sweep
 
 
@@ -171,7 +180,7 @@ def main():
     sum_vectors = fused_data["vectors"]
     sum_vocab_list = list(fused_data["vocab"])
     sum_vocab = {w: i for i, w in enumerate(sum_vocab_list)}
-    print(f"Sanskrit vocab: {len(sum_vocab)} words, {sum_vectors.shape[1]}d")
+    print(f"Sumerian vocab: {len(sum_vocab)} words, {sum_vectors.shape[1]}d")
 
     glove_path = DATA_PROCESSED / "glove.6B.300d.txt"
     print(f"Loading GloVe from {glove_path}")
@@ -261,6 +270,7 @@ def main():
         "target": "glove",
         "target_cache": str(glove_path),
         "alpha": best_alpha,
+        "alpha_selection": "val_top5_csls_v2",
         "alpha_sweep_val": sweep,
         "seed": SEED,
         "candidate_vocab_size": CAND_SIZE,
@@ -315,7 +325,7 @@ def main():
             "test_size": len(X_test),
             "valid_anchors": n_valid,
             "total_anchors": len(anchors),
-            "sanskrit_vocab": len(sum_vocab),
+            "sumerian_vocab": len(sum_vocab),
             "fused_dim": int(sum_vectors.shape[1]),
             "glove_dim": int(glove_vectors.shape[1]),
         },
