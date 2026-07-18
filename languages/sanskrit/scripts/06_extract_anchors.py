@@ -9,12 +9,11 @@ Pipeline:
 4. From the gloss, extract the first English content word that exists in the
    english_gemma_768d cache vocab — that becomes the anchor's `english`.
 
-Deviation from the Greek/LSJ recipe (user-approved 2026-07-14, survey A1):
-a gloss containing a negator ("not", "no", "without", "never") before its
-first in-vocab content word is skipped entirely — MW is dense with privative
-glosses ("not injuring anything") and harvesting the negated word would
-manufacture antonym anchors. The caller falls through to the entry's next
-gloss segment.
+Canonical filters (shared `gloss_filters`, suite v2): negation rule
+(reject glosses with "not", "no", "without", "never" before first in-vocab
+content), cross-reference starters ("see", "cf", "vid"), scaffold words
+("having", "relating", etc.), and single-letter words. The caller falls
+through to the entry's next gloss on rejection.
 
 Gate (PGM lesson): the DCS-lemma -> MW token-level join hit rate is computed
 and persisted to anchor_stats.json BEFORE any FastText compute; below
@@ -26,7 +25,6 @@ frequency, source, lemmas}.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -38,6 +36,11 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from languages.sanskrit.scripts.sanskrit_normalize import normalize_sanskrit_token  # noqa: E402
+from shared.scripts.gloss_filters import (  # noqa: E402
+    check_hit_rate_gate,
+    first_english,
+    hit_rate_stats,
+)
 
 GRC_DIR = Path(__file__).parent.parent
 DATA_RAW = GRC_DIR / "data" / "raw"
@@ -48,46 +51,6 @@ SHARED_MODELS = _ROOT / "shared" / "models"
 ENG_GEMMA_PATH = SHARED_MODELS / "english_gemma_768d.npz"
 
 MIN_OCCURRENCES = 5
-MIN_HIT_RATE = 0.40
-
-# "not"/"no" are deliberately NOT stop-words here (they are in the Greek
-# recipe): a negator must invalidate the gloss, not be skipped over.
-NEGATORS = {"not", "no", "without", "never"}
-
-STOP_WORDS = {
-    "a", "an", "the", "to", "of", "in", "on", "at", "by", "for", "with",
-    "be", "is", "are", "was", "were", "as", "or", "and",
-    "but", "if", "so", "do", "did", "have", "has", "had", "from", "into",
-    "out", "up", "down", "over", "under", "between", "during", "before",
-    "after", "above", "below", "any", "some", "all", "each", "every",
-    "one", "two", "three", "four", "five",
-}
-
-_WORD_RE = re.compile(r"[a-z][a-z'\-]*")
-
-
-def _load_gloss_first_english(eng_vocab_set: set[str], gloss: str) -> str | None:
-    """Return the first English content word in `gloss` that exists in
-    eng_vocab — or None if the gloss is negated before any match.
-
-    "not injuring anything" -> None (caller tries the entry's next gloss);
-    "harmlessness" -> "harmlessness". Strips hyphens for compound matches.
-    """
-    if not gloss:
-        return None
-    lowered = gloss.lower()
-    for word in _WORD_RE.findall(lowered):
-        if word in NEGATORS:
-            return None
-        if word in STOP_WORDS:
-            continue
-        if word in eng_vocab_set:
-            return word
-        if "-" in word:
-            joined = word.replace("-", "")
-            if joined in eng_vocab_set:
-                return joined
-    return None
 
 
 def _load_english_gemma_vocab() -> set[str]:
@@ -127,11 +90,11 @@ def extract_anchors(
             continue
         mw_hits += 1
 
-        english = _load_gloss_first_english(eng_vocab_set, mw.get("gloss_first", ""))
+        english = first_english(mw.get("gloss_first", ""), eng_vocab_set)
         if not english:
             # Try subsequent glosses if first didn't match vocab
             for g in mw.get("glosses", [])[1:5]:
-                english = _load_gloss_first_english(eng_vocab_set, g)
+                english = first_english(g, eng_vocab_set)
                 if english:
                     break
         if not english:
@@ -166,13 +129,8 @@ def extract_anchors(
         })
     anchors = sorted(anchors, key=lambda a: a["confidence"], reverse=True)
 
-    stats = {
-        "mw_hits": mw_hits,
-        "mw_misses": mw_misses,
-        "token_hit_rate": mw_hits / max(1, mw_hits + mw_misses),
-        "gloss_no_eng": gloss_no_eng,
-        "anchors": len(anchors),
-    }
+    stats = hit_rate_stats(hits=mw_hits, misses=mw_misses,
+                           gloss_no_eng=gloss_no_eng, anchors=len(anchors))
     return anchors, stats
 
 
@@ -204,12 +162,7 @@ def main():
     print(f"Token-level MW join hit rate: {stats['token_hit_rate']:.1%}")
     print(f"Saved to: {output_path} (+ {stats_path.name})")
 
-    if stats["token_hit_rate"] < MIN_HIT_RATE:
-        raise SystemExit(
-            f"MW join hit rate {stats['token_hit_rate']:.1%} is below the "
-            f"{MIN_HIT_RATE:.0%} gate (PGM lesson). Inspect lemma "
-            "normalization / MW parse before any FastText compute."
-        )
+    check_hit_rate_gate(stats, "MW")
 
 
 if __name__ == "__main__":
