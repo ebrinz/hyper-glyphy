@@ -209,7 +209,12 @@ STOP_WORDS = frozenset({
 })
 MIN_HIT_RATE = 0.40
 
-_WORD_RE = re.compile(r"[a-z][a-z'\-]*")
+# Unicode-aware (unlike the v1 per-slot ASCII regex): German glosses carry
+# umlauts/ß ("König", "töten") and must tokenize as whole words, not be
+# split at the first non-ASCII char (which made every such gw look
+# single-letter-first and get wrongly rejected). \w is Unicode in py3;
+# digits and underscore excluded.
+_WORD_RE = re.compile(r"[^\W\d_][^\W\d_'\-]*")
 
 
 def first_english(gloss, eng_vocab_set, negators=NEGATORS):
