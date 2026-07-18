@@ -188,6 +188,7 @@ def main():
         "target": "gemma",
         "target_cache": str(english_gemma_path),
         "alpha": best_alpha,
+        "alpha_selection": "val_top5_csls_v2",
         "alpha_sweep_val": sweep,
         "seed": SEED,
         "candidate_vocab_size": CAND_SIZE,
