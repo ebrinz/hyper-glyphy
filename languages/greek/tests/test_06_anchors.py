@@ -11,8 +11,23 @@ def test_anchors_carry_lemmas():
     lemmas = [{"cf": "θάλασσα", "form": "θαλάσσης"}] * 5
     lsj_index = {"θαλασσα": {"lemma_norm": "θαλασσα", "gloss_first": "the sea",
                              "glosses": ["the sea"]}}
-    anchors = _mod.extract_anchors(lemmas, lsj_index, {"sea"}, min_occurrences=5)
+    anchors, stats = _mod.extract_anchors(lemmas, lsj_index, {"sea"},
+                                          min_occurrences=5)
     assert anchors
     by_surface = {a["greek"]: a for a in anchors}
     assert by_surface["θαλασσα"]["lemmas"] == ["θαλασσα"]
     assert by_surface["θαλασσησ"]["lemmas"] == ["θαλασσα"]
+    assert stats["token_hit_rate"] == 1.0
+
+
+def test_negated_lsj_gloss_falls_through():
+    # LSJ "not to be injured, inviolable" must not anchor to "injured"
+    lemmas = [{"cf": "ἄτρωτος", "form": "ἄτρωτος"}] * 5
+    lsj_index = {"ατρωτοσ": {"lemma_norm": "ατρωτοσ",
+                             "gloss_first": "not to be injured",
+                             "glosses": ["not to be injured", "inviolable"]}}
+    anchors, _ = _mod.extract_anchors(lemmas, lsj_index,
+                                      {"injured", "inviolable"},
+                                      min_occurrences=5)
+    assert anchors
+    assert all(a["english"] == "inviolable" for a in anchors)

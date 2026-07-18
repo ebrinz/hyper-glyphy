@@ -8,7 +8,8 @@ Pipeline:
    keyed by `lemma_norm`. Use the first LSJ gloss as the anchor's English.
 4. From the LSJ gloss (e.g., "not to be injured, inviolable"), extract the
    first English content word that exists in the english_gemma_768d cache
-   vocab — that becomes the anchor's `english` field.
+   vocab using shared gloss_filters (negation, cross-reference, scaffold, and
+   single-letter rejection) — that becomes the anchor's `english` field.
 
 No multilingual-Gemma translation step needed (unlike Hittite) — LSJ
 glosses are native English.
@@ -19,7 +20,6 @@ frequency, source}.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -31,6 +31,11 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from languages.greek.scripts.greek_normalize import normalize_greek_token  # noqa: E402
+from shared.scripts.gloss_filters import (  # noqa: E402
+    check_hit_rate_gate,
+    first_english,
+    hit_rate_stats,
+)
 
 GRC_DIR = Path(__file__).parent.parent
 DATA_RAW = GRC_DIR / "data" / "raw"
@@ -41,38 +46,6 @@ SHARED_MODELS = _ROOT / "shared" / "models"
 ENG_GEMMA_PATH = SHARED_MODELS / "english_gemma_768d.npz"
 
 MIN_OCCURRENCES = 5
-STOP_WORDS = {
-    "a", "an", "the", "to", "of", "in", "on", "at", "by", "for", "with",
-    "not", "no", "be", "is", "are", "was", "were", "as", "or", "and",
-    "but", "if", "so", "do", "did", "have", "has", "had", "from", "into",
-    "out", "up", "down", "over", "under", "between", "during", "before",
-    "after", "above", "below", "any", "some", "all", "each", "every",
-    "one", "two", "three", "four", "five",
-}
-
-_WORD_RE = re.compile(r"[a-z][a-z'\-]*")
-
-
-def _load_gloss_first_english(eng_vocab_set: set[str], gloss: str) -> str | None:
-    """Return the first English content word in `gloss` that exists in eng_vocab.
-
-    Handles multi-word glosses like "not to be injured" -> "injured".
-    Strips hyphens to also try compound matches.
-    """
-    if not gloss:
-        return None
-    lowered = gloss.lower()
-    for word in _WORD_RE.findall(lowered):
-        if word in STOP_WORDS:
-            continue
-        if word in eng_vocab_set:
-            return word
-        # Try hyphen-removed form (e.g., "ear-ring" -> "earring")
-        if "-" in word:
-            joined = word.replace("-", "")
-            if joined in eng_vocab_set:
-                return joined
-    return None
 
 
 def _load_english_gemma_vocab() -> set[str]:
@@ -90,7 +63,7 @@ def extract_anchors(
     lsj_index: dict[str, dict],
     eng_vocab_set: set[str],
     min_occurrences: int = MIN_OCCURRENCES,
-) -> list[dict]:
+) -> tuple[list[dict], dict]:
     """Build (greek, english) anchors via Diorisis-LSJ join."""
     pair_counts: Counter[tuple[str, str]] = Counter()
     pair_lemmas: dict[tuple[str, str], set[str]] = {}
@@ -112,11 +85,10 @@ def extract_anchors(
             continue
         lsj_hits += 1
 
-        english = _load_gloss_first_english(eng_vocab_set, lsj.get("gloss_first", ""))
+        english = first_english(lsj.get("gloss_first", ""), eng_vocab_set)
         if not english:
-            # Try subsequent glosses if first didn't match vocab
             for g in lsj.get("glosses", [])[1:5]:
-                english = _load_gloss_first_english(eng_vocab_set, g)
+                english = first_english(g, eng_vocab_set)
                 if english:
                     break
         if not english:
@@ -149,7 +121,10 @@ def extract_anchors(
             "source": "Diorisis+LSJ",
             "lemmas": sorted(pair_lemmas[(greek_form, eng)]),
         })
-    return sorted(anchors, key=lambda a: a["confidence"], reverse=True)
+    anchors = sorted(anchors, key=lambda a: a["confidence"], reverse=True)
+    stats = hit_rate_stats(hits=lsj_hits, misses=lsj_misses,
+                           gloss_no_eng=gloss_no_eng, anchors=len(anchors))
+    return anchors, stats
 
 
 def main():
@@ -168,13 +143,19 @@ def main():
     eng_vocab_set = _load_english_gemma_vocab()
     print(f"English Gemma vocab: {len(eng_vocab_set)} entries")
 
-    anchors = extract_anchors(lemmas, lsj_index, eng_vocab_set)
+    anchors, stats = extract_anchors(lemmas, lsj_index, eng_vocab_set)
     output_path = DATA_PROCESSED / "english_anchors.json"
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(anchors, f, ensure_ascii=False, indent=2)
+    stats_path = DATA_PROCESSED / "anchor_stats.json"
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
 
     print(f"\nTotal anchors: {len(anchors)}")
-    print(f"Saved to: {output_path}")
+    print(f"Token-level LSJ join hit rate: {stats['token_hit_rate']:.1%}")
+    print(f"Saved to: {output_path} (+ {stats_path.name})")
+
+    check_hit_rate_gate(stats, "LSJ")
 
 
 if __name__ == "__main__":
