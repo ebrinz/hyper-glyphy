@@ -28,7 +28,6 @@ from shared.scripts.eval_suite import (
     save_artifacts,
     score_suite,
     stratify,
-    val_top1_csls,
     val_topk_csls,
 )
 

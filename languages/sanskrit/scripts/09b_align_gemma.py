@@ -1,5 +1,5 @@
 """
-Phase A: Ridge alignment of Sumerian FastText into EmbeddingGemma 768d.
+Phase A: Ridge alignment of Sanskrit FastText into EmbeddingGemma 768d.
 
 Mirrors 09_align_and_evaluate.py but targets EmbeddingGemma-encoded
 English vectors instead of GloVe. Reuses helpers from align_09 to
@@ -62,7 +62,7 @@ EXPECTED_TARGET_DIM = 768
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ridge alignment: Sumerian FastText -> EmbeddingGemma 768d.")
+    parser = argparse.ArgumentParser(description="Ridge alignment: Sanskrit FastText -> EmbeddingGemma 768d.")
     parser.add_argument(
         "--mode",
         choices=list(ENGLISH_GEMMA_PATHS.keys()),
@@ -95,12 +95,12 @@ def main():
         sys.exit(1)
 
     print(f"Mode: {mode_label}")
-    print(f"Loading fused Sumerian vectors from {FUSED_PATH}")
+    print(f"Loading fused Sanskrit vectors from {FUSED_PATH}")
     fused = np.load(str(FUSED_PATH))
     sum_vectors = fused["vectors"]
     sum_vocab_list = [str(w) for w in fused["vocab"]]
     sum_vocab = {w: i for i, w in enumerate(sum_vocab_list)}
-    print(f"Sumerian vocab: {len(sum_vocab)} words, {sum_vectors.shape[1]}d")
+    print(f"Sanskrit vocab: {len(sum_vocab)} words, {sum_vectors.shape[1]}d")
 
     print(f"Loading Gemma English vectors from {english_gemma_path}")
     gemma = np.load(str(english_gemma_path))
@@ -243,7 +243,7 @@ def main():
             "test_size": len(X_test),
             "valid_anchors": n_valid,
             "total_anchors": len(anchors),
-            "sumerian_vocab": len(sum_vocab),
+            "sanskrit_vocab": len(sum_vocab),
             "fused_dim": int(sum_vectors.shape[1]),
             "target_dim": int(eng_vectors.shape[1]),
             "gemma_model": gemma_model,

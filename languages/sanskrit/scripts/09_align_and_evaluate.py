@@ -1,5 +1,5 @@
 """
-Ridge Alignment & Evaluation: Map Sumerian embeddings to GloVe English space.
+Ridge Alignment & Evaluation: Map Sanskrit embeddings to GloVe English space.
 
 Pipeline:
   1. Load fused 1536d Sanskrit vectors
@@ -31,7 +31,6 @@ from shared.scripts.eval_suite import (
     save_artifacts,
     score_suite,
     stratify,
-    val_top1_csls,
     val_topk_csls,
 )
 
@@ -68,7 +67,7 @@ def build_training_data(
         pad_dim = 0
 
     for anchor in anchors:
-        s_word = anchor.get("sanskrit") or anchor.get("sumerian")
+        s_word = anchor.get("sanskrit") or anchor.get("sanskrit")
         e_word = anchor["english"]
         if e_word not in eng_vocab:
             continue
@@ -180,7 +179,7 @@ def main():
     sum_vectors = fused_data["vectors"]
     sum_vocab_list = list(fused_data["vocab"])
     sum_vocab = {w: i for i, w in enumerate(sum_vocab_list)}
-    print(f"Sumerian vocab: {len(sum_vocab)} words, {sum_vectors.shape[1]}d")
+    print(f"Sanskrit vocab: {len(sum_vocab)} words, {sum_vectors.shape[1]}d")
 
     glove_path = DATA_PROCESSED / "glove.6B.300d.txt"
     print(f"Loading GloVe from {glove_path}")
@@ -325,7 +324,7 @@ def main():
             "test_size": len(X_test),
             "valid_anchors": n_valid,
             "total_anchors": len(anchors),
-            "sumerian_vocab": len(sum_vocab),
+            "sanskrit_vocab": len(sum_vocab),
             "fused_dim": int(sum_vectors.shape[1]),
             "glove_dim": int(glove_vectors.shape[1]),
         },
