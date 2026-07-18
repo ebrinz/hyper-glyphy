@@ -837,15 +837,23 @@ grep -n 'fasttext' languages/sanskrit/scripts/09_align_and_evaluate.py languages
 grep -rn 'sumerian\|greek' languages/{hittite,greek,sanskrit}/scripts/09*.py | grep -v '^\S*greek/scripts/09[^:]*:.*greek'
 ```
 
-The akkadian canonical loads `fasttext_akkadian.model`→ sed → per-slot names;
-verify sanskrit's shows `fasttext_sanskrit.model` and hittite/greek show
-their v1-era filenames (`fasttext_hittite` / `fasttext_sumerian` — greek's
-legacy artifact name). If greek's regenerated 09 says `fasttext_greek` but
-its trained artifact on disk is `fasttext_sumerian.model`, STOP and surface:
-the executor must symlink `fasttext_greek.model -> fasttext_sumerian.model`
-(plus `.vec` and the two `.npy` sidecars… symlinks named
-`fasttext_greek.model.wv.vectors_ngrams.npy` etc.) OR restore the filename
-line — ask the controller; do not silently rename 654MB artifacts.
+RESOLVED (execution finding, controller decision 2026-07-18): the akkadian
+canonical hardcodes the literal legacy string `fasttext_sumerian.model`
+(never parameterized), so the plain sed leaves it for every slot — which
+matches greek's and hittite's on-disk legacy artifact names by accident,
+and is WRONG only for sanskrit (its artifact is `fasttext_sanskrit.model`).
+Sanskrit's derivation therefore adds ONE extra substitution:
+
+```bash
+sed -e "s/akkadian/sanskrit/g" -e "s/Akkadian/Sanskrit/g" \
+    -e "s/fasttext_sumerian/fasttext_sanskrit/g" \
+  languages/akkadian/scripts/$f > languages/sanskrit/scripts/$f
+```
+
+diff-gated against that extended derivation. Do not rename or symlink any
+trained artifacts. Verify after: sanskrit 09/09b reference
+`fasttext_sanskrit.*`; greek/hittite reference `fasttext_sumerian.*` and
+those files exist on disk (`ls languages/{greek,hittite}/models/fasttext_sumerian.model`).
 
 - [ ] **Step 4: Apply the same hunks to the two variants**
 
