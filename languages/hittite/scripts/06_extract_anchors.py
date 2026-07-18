@@ -37,6 +37,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from languages.hittite.scripts.hittite_normalize import normalize_hittite_token  # noqa: E402
+from shared.scripts.gloss_filters import DE_NEGATORS, gw_is_usable  # noqa: E402
 
 HIT_DIR = Path(__file__).parent.parent
 DATA_RAW = HIT_DIR / "data" / "raw"
@@ -52,6 +53,11 @@ TRANSLATION_CACHE = DATA_DICTS / "german_to_english.json"
 # Thresholds
 MIN_GLOSS_OCCURRENCES = 5
 JUNK_GLOSSES = {"", "?", "x", "X", "...", "??"}
+
+# v2 gw_is_usable rejection count, reset at the top of extract_german_anchors()
+# and incremented here. Module-level so _filter_gloss's bool-returning
+# signature stays unchanged for its existing callers.
+_GW_REJECTED_V2 = 0
 
 # Heterogram bridge config
 SUM_ALIGNED_PATH = _ROOT / "languages" / "sumerian" / "final_output" / "sumerian_aligned_gemma_vectors.npz"
@@ -147,6 +153,7 @@ def translate_german_glosses(
 
 def _filter_gloss(gw: str) -> bool:
     """Reject junk, numeric, and parenthesized-only glosses."""
+    global _GW_REJECTED_V2
     if not gw or gw in JUNK_GLOSSES:
         return False
     if len(gw) <= 2:
@@ -161,6 +168,12 @@ def _filter_gloss(gw: str) -> bool:
     # as German glosses). Heuristic: starts with uppercase non-ASCII letter.
     if gw[0] in "ŠḪṢṬĀĒĪŪŌ":
         return False
+    # A negated German gloss ("nicht verletzen") embeds near its antonym
+    # through the Gemma translation step — the same A1 antonym-anchor bug,
+    # one language removed.
+    if not gw_is_usable(gw, negators=DE_NEGATORS):
+        _GW_REJECTED_V2 += 1
+        return False
     return True
 
 
@@ -171,6 +184,8 @@ def extract_german_anchors(
     min_occurrences: int = MIN_GLOSS_OCCURRENCES,
 ) -> list[dict]:
     """Extract Hittite-English anchors via German glosses + Gemma translation."""
+    global _GW_REJECTED_V2
+    _GW_REJECTED_V2 = 0
     gloss_counts: Counter[str] = Counter()
     for lemma in lemmas:
         gw = (lemma.get("gw") or "").strip()
@@ -336,6 +351,15 @@ def main():
     print(f"  heterogram_sux: {sum(1 for a in merged if a['source'] == 'heterogram_sux')}")
     print(f"  heterogram_akk: {sum(1 for a in merged if a['source'] == 'heterogram_akk')}")
     print(f"Saved to: {output_path}")
+
+    stats = {
+        "anchors": len(merged),
+        "gw_rejected_v2": _GW_REJECTED_V2,
+        "source_counts": {"german_gloss": len(primary), "heterogram": len(bridge)},
+    }
+    with open(DATA_PROCESSED / "anchor_stats.json", "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+    print(f"anchor_stats.json written: {stats}")
 
 
 if __name__ == "__main__":
