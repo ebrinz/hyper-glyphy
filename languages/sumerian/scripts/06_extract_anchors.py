@@ -17,10 +17,17 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from languages.sumerian.scripts.sumerian_normalize import normalize_sumerian_token  # noqa: E402
+from shared.scripts.gloss_filters import gw_is_usable  # noqa: E402
 
 DATA_RAW = Path(__file__).parent.parent / "data" / "raw"
 DATA_PROCESSED = Path(__file__).parent.parent / "data" / "processed"
 DATA_DICTS = Path(__file__).parent.parent / "data" / "dictionaries"
+
+# v2 gw_is_usable rejection count for the ePSD2 source, reset on each
+# extract_epsd2_anchors() call. Module-level (not a return value) so the
+# function's list-returning signature stays unchanged for its existing
+# callers (tests, audit_anchors.py).
+_GW_REJECTED_V2 = 0
 
 
 def extract_epsd2_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[dict]:
@@ -29,6 +36,8 @@ def extract_epsd2_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
 
     Deduplicates by (cf, gw) and filters by occurrence count.
     """
+    global _GW_REJECTED_V2
+    _GW_REJECTED_V2 = 0
     pair_counts = Counter()
     pair_lemmas: dict[tuple[str, str], set[str]] = {}
     for lemma in lemmas:
@@ -63,6 +72,9 @@ def extract_epsd2_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
             if gw.isdigit():
                 continue
             if gw.startswith("~"):
+                continue
+            if not gw_is_usable(gw):
+                _GW_REJECTED_V2 += 1
                 continue
 
             confidence = min(0.95, 0.5 + (count / 100))
@@ -178,10 +190,24 @@ def main():
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(merged, f, ensure_ascii=False, indent=2)
 
+    source_counts = {
+        "ePSD2": sum(1 for a in merged if a["source"] == "ePSD2"),
+        "ETCSL": sum(1 for a in merged if a["source"] == "ETCSL"),
+    }
+
     print(f"\nMerged anchors: {len(merged)}")
-    print(f"From ePSD2: {sum(1 for a in merged if a['source'] == 'ePSD2')}")
-    print(f"From ETCSL: {sum(1 for a in merged if a['source'] == 'ETCSL')}")
+    print(f"From ePSD2: {source_counts['ePSD2']}")
+    print(f"From ETCSL: {source_counts['ETCSL']}")
     print(f"Saved to: {output_path}")
+
+    stats = {
+        "anchors": len(merged),
+        "gw_rejected_v2": _GW_REJECTED_V2,
+        "source_counts": source_counts,
+    }
+    with open(DATA_PROCESSED / "anchor_stats.json", "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+    print(f"anchor_stats.json written: {stats}")
 
 
 if __name__ == "__main__":

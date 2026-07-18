@@ -25,6 +25,7 @@ from languages.akkadian.scripts.akkadian_normalize import (  # noqa: E402
     normalize_akkadian_token,
     mimation_alternates,
 )
+from shared.scripts.gloss_filters import gw_is_usable  # noqa: E402
 
 DATA_RAW = Path(__file__).parent.parent / "data" / "raw"
 DATA_PROCESSED = Path(__file__).parent.parent / "data" / "processed"
@@ -34,8 +35,14 @@ JUNK_ENGLISH = {
     "x", "xx", "0", "00", "1", "n", "c", "e", "i", "u", "s", "unmng", "cf",
 }
 
+# v2 gw_is_usable rejection count, reset at the top of extract_oracc_anchors()
+# and incremented here. Module-level so _filter_gloss's bool-returning
+# signature stays unchanged for its existing callers.
+_GW_REJECTED_V2 = 0
+
 
 def _filter_gloss(gw: str) -> bool:
+    global _GW_REJECTED_V2
     if not gw or gw in JUNK_ENGLISH:
         return False
     if len(gw) <= 2:
@@ -43,6 +50,9 @@ def _filter_gloss(gw: str) -> bool:
     if gw.isdigit():
         return False
     if gw.startswith("~"):
+        return False
+    if not gw_is_usable(gw):
+        _GW_REJECTED_V2 += 1
         return False
     return True
 
@@ -80,6 +90,8 @@ def extract_oracc_anchors(lemmas: list[dict], min_occurrences: int = 5) -> list[
     in-record (surface, gloss) registration, ALSO registers (other_surfaces, gloss)
     for every surface variant of that lemma's citation form.
     """
+    global _GW_REJECTED_V2
+    _GW_REJECTED_V2 = 0
     cf_to_surfaces = _build_cf_surface_map(lemmas)
 
     pair_counts: Counter[tuple[str, str]] = Counter()
@@ -149,6 +161,15 @@ def main():
 
     print(f"Total anchors: {len(anchors)}")
     print(f"Saved to: {output_path}")
+
+    stats = {
+        "anchors": len(anchors),
+        "gw_rejected_v2": _GW_REJECTED_V2,
+        "source_counts": {"oracc": len(anchors)},
+    }
+    with open(DATA_PROCESSED / "anchor_stats.json", "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+    print(f"anchor_stats.json written: {stats}")
 
 
 if __name__ == "__main__":
