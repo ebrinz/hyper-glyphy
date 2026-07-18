@@ -16,11 +16,15 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from languages.egyptian.scripts.egyptian_normalize import normalize_egyptian_token  # noqa: E402
+from shared.scripts.gloss_filters import gw_is_usable  # noqa: E402
 
 _LANG_ROOT = Path(__file__).parent.parent
 DATA_PROCESSED = _LANG_ROOT / "data" / "processed"
 
 _JUNK_ENGLISH = {"x", "xx", "0", "00", "1", "n", "c", "e", "i", "u", "s"}
+
+# v2 gw_is_usable rejection count, reset at the top of normalize_anchors()
+_GW_REJECTED_V2 = 0
 
 
 def normalize_anchors(
@@ -28,6 +32,8 @@ def normalize_anchors(
     min_frequency: int = 5,
 ) -> list[dict]:
     """Normalize heiroglyphy anchors to hyper-glyphy format with quality filters."""
+    global _GW_REJECTED_V2
+    _GW_REJECTED_V2 = 0
     best = {}
 
     for anchor in raw_anchors:
@@ -45,6 +51,9 @@ def normalize_anchors(
         if english in _JUNK_ENGLISH:
             continue
         if english.isdigit():
+            continue
+        if not gw_is_usable(english):
+            _GW_REJECTED_V2 += 1
             continue
 
         raw_key = anchor.get("hieroglyphic", "").strip()
@@ -80,6 +89,15 @@ def main():
     print(f"Normalized anchors: {len(filtered)}")
     print(f"Filtered: {len(raw) - len(filtered)} removed")
     print(f"Saved to: {output_path}")
+
+    stats = {
+        "anchors": len(filtered),
+        "gw_rejected_v2": _GW_REJECTED_V2,
+        "source_counts": {"tla_ramses": len(filtered)},
+    }
+    with open(DATA_PROCESSED / "anchor_stats.json", "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+    print(f"anchor_stats.json written: {stats}")
 
 
 if __name__ == "__main__":

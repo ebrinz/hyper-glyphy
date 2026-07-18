@@ -27,14 +27,17 @@ def test_filter_single_char_english():
         {"hieroglyphic": "n", "english": "the", "german": "der", "confidence": 0.34, "frequency": 8829},
         {"hieroglyphic": "m", "english": "a", "german": "ein", "confidence": 0.37, "frequency": 8467},
         {"hieroglyphic": "x", "english": "x", "german": "x", "confidence": 0.50, "frequency": 100},
+        {"hieroglyphic": "t", "english": "bread", "german": "brot", "confidence": 0.80, "frequency": 500},
     ]
 
     result = normalize_anchors(raw)
 
     english_words = [a["english"] for a in result]
-    assert "the" in english_words
+    # stopword-only glosses rejected by shared gw_is_usable (suite v2)
+    assert "the" not in english_words
     assert "a" not in english_words
     assert "x" not in english_words
+    assert "bread" in english_words
 
 
 def test_filter_low_frequency():
