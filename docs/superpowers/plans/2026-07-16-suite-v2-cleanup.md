@@ -214,7 +214,7 @@ MIN_HIT_RATE = 0.40
 # split at the first non-ASCII char (which made every such gw look
 # single-letter-first and get wrongly rejected). \w is Unicode in py3;
 # digits and underscore excluded.
-_WORD_RE = re.compile(r"[^\W\d_][^\W\d_'\-]*")
+_WORD_RE = re.compile(r"[^\W\d_](?:[^\W\d_]|['\-])*")
 
 
 def first_english(gloss, eng_vocab_set, negators=NEGATORS):
