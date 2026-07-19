@@ -5,6 +5,11 @@ Benchmarks: (a) ETCSL genre classification (leave-one-out nearest-centroid),
 (b) cross-language parallel retrieval (see parallels subcommand, added later).
 
 See: docs/superpowers/specs/2026-07-06-eval-redesign-design.md
+
+Note (2026-07, A6): document tokenization here is raw line.split() + the
+slot normalizer, while FastText corpora pass through each slot's
+05_clean_and_tokenize. A known, accepted inconsistency of this parked
+doc-level plane — do not "fix" it without re-running Gates 1/2.
 """
 import json
 import re

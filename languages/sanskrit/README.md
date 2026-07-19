@@ -18,29 +18,53 @@ full measured writeup.
 
 ## Anchors
 
-95,924 anchors extracted (Task 6); token-level DCS-lemma→MW join hit rate
-94.9% (5,391,784 hits / 287,678 misses), 40% gate passed; 90,176 valid at
-fit time. Split via the shared lemma-group union-find (`anchor_split.py`):
-64/16/20 train/val/test, seed 42. Anchor extraction applies the
-negation-gloss rule (see "Deliberate deviations" below): glosses hitting a
-negator before an in-vocab content word skip to the next gloss segment.
+**Suite v2 (2026-07-19):** 92,275 anchors (gloss_filters module, shared
+across all six slots); token-level DCS-lemma→MW join hit rate unchanged at
+94.9%, 40% gate passed. Split via the shared lemma-group union-find
+(`anchor_split.py`): 64/16/20 train/val/test, seed 42. Anchor extraction
+applies the negation-gloss rule (see "Deliberate deviations" below):
+glosses hitting a negator before an in-vocab content word skip to the next
+gloss segment. Suite v1 (archived 2026-07-16): 95,924 anchors, 90,176 valid
+at fit time — gloss_filters v2 rejects 3,649 more (−3.8%) of the raw joins;
+see repo journal 2026-07-19 entry.
 
 ## Word-level suite
 
 Seed 42 lemma-group split (near-surface edges), 50,000 candidates, CSLS
-retrieval. Leak check: 0.00% (0/19,185).
+retrieval. Leak check: 0.00% (0/19,185). Alpha selected via `alpha-v2`
+(val top-5 CSLS plateau rule, `alpha_selection=val_top5_csls_v2`).
+
+**Suite v2 (current):**
+
+| Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn |
+|--------|-------|:----------:|:-------------:|:----------------:|:---------------:|:------------:|
+| GloVe 300d | 1e-4 | 35.16% | 3.47% | 0.09% | 2.95% | 4.79% |
+| Gemma whitened 768d | 1e4 | 35.90% | 5.49% | 0.46% | 4.71% | 7.28% |
+
+Gemma beats GloVe combined: +1.76pp top-1. Gemma alpha=1e4 is a real
+interior signal max (not a flat-noise pick); USER-ACCEPTED TRADE
+2026-07-18: trades in-sample dictionary accuracy (44.40% v1 → 35.90% v2)
+for generalization — all test strata improved. See repo journal 2026-07-19
+entry.
+
+**Suite v1 (archived 2026-07-16 — pre-gloss-filter anchors, val-top-1
+alpha):**
 
 | Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn |
 |--------|-------|:----------:|:-------------:|:----------------:|:---------------:|:------------:|
 | GloVe 300d | 1.0 | 33.51% | 2.55% | 0.23% | 2.22% | 3.73% |
 | Gemma whitened 768d | 1000 | 44.40% | 4.35% | 0.74% | 3.83% | 6.18% |
 
-Gemma beats GloVe combined: +1.62pp top-1. Sanskrit also carries the
-pre-registered Procrustes anchor-quality read-out (val cosine 0.1145,
-≤0.12 band fired — see journal 2026-07-16 entry): with the best token-level
-hit rate of any slot (94.9%), the fact that the val cosine still lands in
-the same ~0.115 band as Sumerian (0.1157) and Greek (0.1149) indicates
-anchors were never the binding constraint on the semi-orthogonal plane.
+Sanskrit also carries the pre-registered Procrustes anchor-quality read-out
+(measured on the v1 recipe; not re-run for v2): val cosine 0.1145, ≤0.12
+band fired — see journal 2026-07-16 entry. With the best token-level hit
+rate of any slot (94.9%), the fact that the val cosine still lands in the
+same ~0.115 band as Sumerian (0.1157) and Greek (0.1149) indicates anchors
+were never the binding constraint on the semi-orthogonal plane. A v2 val
+cosine was also measured for the record (0.1198, still ≤0.12, closest of
+the four re-measured slots to the band edge); per the suite-v2 spec, the v1
+retire verdict was pre-registered on the v1 recipe and stands — see repo
+journal 2026-07-19 entry.
 
 ## Corpus
 

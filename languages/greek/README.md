@@ -6,22 +6,43 @@ and whitened-EmbeddingGemma 768d English semantic spaces. Pipeline structure mir
 
 ## Status
 
-Scaffold complete (G1–G4, commit cbb4e54, 2026-05-11). First alignment run deferred
-pending eval redesign (see [repo journal](../../../../docs/EXPERIMENT_JOURNAL.md),
-2026-07-06 entry).
+Scaffold complete (G1–G4, commit cbb4e54, 2026-05-11). Eval-redesign suite v1 shipped
+2026-07-09 (first run); suite v2 (shared `gloss_filters` anchors + alpha-v2 plateau
+rule) shipped 2026-07-19. See [repo journal](../../../../docs/EXPERIMENT_JOURNAL.md),
+2026-07-19 and 2026-07-09 entries, and the repo-root README results table.
 
 ## Corpus
 
 - **Diorisis** (Figshare 12251468): 821 JSON files, Homer to 5th century AD.
   10,202,857 token-lemma records from 820 texts, 537,785 lines. ~10.2M tokens.
 - **LSJ** (Perseus Digital Library `PerseusDL/lexica`): 27 XML files, 90,424 entries.
-  LSJ join hit rate: 77% (7.76M hits / 2.30M misses).
+  LSJ join hit rate: 77.1% (suite v2, gate passed) — 77% (7.76M hits / 2.30M misses)
+  under suite v1.
 
 ## Anchors
 
-106,260 anchors extracted (G4, commit cbb4e54). Lemma-group split applied (commit
-59a8252): union-find groups anchors sharing a lemma, 64/16/20 train/val/test split,
-alpha selected on validation.
+**Suite v2 (2026-07-19):** 105,920 anchors (gloss_filters module, shared across all
+six slots). Suite v1 (archived): 106,260 anchors extracted (G4, commit cbb4e54) — v2
+rejects 340 more of the raw joins; see repo journal 2026-07-19 entry. Lemma-group
+split applied (commit 59a8252): union-find groups anchors sharing a lemma, 64/16/20
+train/val/test split, alpha selected via `alpha-v2` (val top-5 CSLS plateau rule,
+`alpha_selection=val_top5_csls_v2`).
+
+## Word-level suite
+
+**Suite v2 (current):**
+
+| Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn |
+|--------|-------|:----------:|:-------------:|:----------------:|:---------------:|:------------:|
+| GloVe 300d | 0.1 | 37.10% | 4.43% | 0.59% | 3.60% | 6.24% |
+| Gemma whitened 768d | 1.0 | 50.11% | 6.07% | 0.68% | 4.91% | 8.12% |
+
+**Suite v1 (archived 2026-07-16 — pre-gloss-filter anchors, val-top-1 alpha):**
+
+| Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn |
+|--------|-------|:----------:|:-------------:|:----------------:|:---------------:|:------------:|
+| GloVe 300d | 1e-4 | 39.05% | 4.06% | 0.40% | 3.31% | 5.67% |
+| Gemma whitened 768d | 0.1 | 52.49% | 5.33% | 0.68% | 4.37% | 7.42% |
 
 ## Pipeline scripts
 

@@ -4,6 +4,105 @@ Cross-language experiment log. Reverse chronological — newest at the top.
 
 ## Recent findings (newest first)
 
+## 2026-07-19 — Suite v2 shipped: shared gloss_filters + alpha-v2 plateau rule, all six slots re-run.
+
+**Recipe deltas.** `shared/scripts/gloss_filters.py` is now the single source
+of anchor-English selection across all six slots: `NEGATORS = {not, no,
+without, never}`; `DE_NEGATORS = {nicht, kein, keine, keinen, ohne, nie,
+niemals}`; `XREF_STARTERS = {see, cf, vid}`; `SCAFFOLD_WORDS` (14 words, see
+module); `STOP_WORDS` = the inherited Greek stop-word set minus `not`/`no`;
+a Unicode word regex. Two selection functions serve two slot families:
+`first_english(gloss, eng_vocab_set, negators=NEGATORS)` for the
+dictionary-join slots (Greek, Sanskrit) and `gw_is_usable(value,
+negators=...)` for the value slots (Sumerian ePSD2, Akkadian,
+Hittite — with `DE_NEGATORS` — and Egyptian). `MIN_HIT_RATE` 0.40 gate is
+unchanged; `anchor_stats.json` is now the canonical per-slot artifact.
+Alpha selection moved to **alpha-v2**: select on val top-5 CSLS, plateau
+defined as within 100/n_val pp of the max, lowest alpha on the plateau wins
+ties (v1 selected on val top-1 with an arbitrary tie-break). Recorded as
+`alpha_selection=val_top5_csls_v2` in all 12 results configs (6 slots × 2
+targets). Both designed behaviors were observed in the re-run: a
+signal-driven interior max (Sanskrit Gemma) and a flat-noise plateau rescue
+(Akkadian Gemma) — see below.
+
+**Anchors v1 → v2 (guardrail: all six slots passed).**
+- Sumerian 13,100 → 13,048 (−52; gw_rejected_v2 72; sources ePSD2 12,355 /
+  ETCSL 693)
+- Akkadian 24,415 → 24,116 (−299; gw_rejected_v2 8,367)
+- Hittite 11,750 → 11,651 (−99; gw_rejected_v2 7,235 German; heterogram
+  bridge restored: sux 28 / akk 39 — the /tmp vocab cache had evaporated and
+  was regenerated from Sumerian's aligned vocab pkl)
+- Greek 106,260 → 105,920 (−340; LSJ join hit rate 77.1%, gate passed)
+- Egyptian (06-output basis) raw 8,541 → 4,568 normalized (gw_rejected_v2
+  3,602; v1's 4,152 was measured post-09-stopword-filter — a different
+  point, not directly comparable)
+- Sanskrit 95,924 → 92,275 (−3,649, −3.8%; MW join 94.9%, gate passed)
+
+**Per-slot suites, both targets (top-1 exact %: dict / interpolation /
+zero-shot / combined; v1 combined in parens).** All results JSONs carry
+`alpha_selection=val_top5_csls_v2`; syn and `gold_oov_candidates` values
+live in each slot's `results/alignment_results*.json` under
+`test_combined` — see the README v2 table for the gold-OOV column.
+- Sumerian GloVe a=10: 77.99/7.20/0.20/4.44 (v1 comb 4.55) | Gemma a=1000:
+  75.60/10.13/1.22/6.61 (v1 comb 5.54)
+- Akkadian GloVe a=10: 38.47/0.00/0.24/0.18 | Gemma a=0.01:
+  55.24/0.18/0.31/0.27 (v1 comb 0.13)
+- Hittite GloVe a=1e-4: 67.99/8.90/0.00/5.01 (v1 comb 4.39) | Gemma a=1e-3:
+  78.35/13.98/0.00/7.88 (v1 comb 6.83)
+- Greek GloVe a=0.1: 37.10/4.43/0.59/3.60 (v1 comb 3.31) | Gemma a=1.0:
+  50.11/6.07/0.68/4.91 (v1 comb 4.37)
+- Egyptian GloVe a=1e-3: 66.29/25.15/0.00/19.07 (v1 comb 14.81) | Gemma
+  a=1e-3: 70.52/26.02/0.92/19.96 (v1 comb 15.47) — biggest v2 winner (noisy
+  TLA input cleaned)
+- Sanskrit GloVe a=1e-4: 35.16/3.47/0.09/2.95 (v1 comb 2.22) | Gemma a=1e4:
+  35.90/5.49/0.46/4.71 (v1 comb 3.83; USER-ACCEPTED TRADE 2026-07-18: real
+  interior max at 1e4 trades in-sample dictionary (44.40→35.90) for
+  generalization — all test strata up)
+
+**Akkadian-Gemma acid test.** This is the pre-registered acid test for the
+alpha-v2 rule. v1's Gemma dictionary accuracy was 19.9% via alpha=1e4, a
+flat-noise pick on an entirely flat val sweep (single-anchor margin over the
+0.1–1000 plateau). v2's plateau rule, applied to the *same* flat sweep, ties
+toward the lowest alpha and picks 0.01 instead — dictionary jumps to
+55.24%, combined 0.13%→0.27%. Fires as designed: same underlying signal,
+correct-by-construction alpha selection, a large swing in dictionary
+accuracy with no change to the eval data — v1's PATHOLOGY is FIXED, not
+papered over.
+
+**Procrustes observations (record only, not re-litigated).** New v2 val
+cosines: sanskrit 0.1145 → 0.1198 (full) | sumerian 0.1157 → 0.1117 (full) |
+hittite 0.0586 → 0.0666 (stable) | greek 0.1149 → 0.1163 (full). All four
+remain ≤ 0.12: the v1 retire verdict was pre-registered on the v1 recipe and
+stands; v2 values are reported for the record. No v2 cosine exceeds 0.12, so
+the flag sentence per spec §5 is not triggered — worth noting factually that
+sanskrit's 0.1198 sits closest of the four to the 0.12 band edge.
+
+**A5 hubness diagnostic (Task 11, suite-v2 re-export, ridge plane, measured
+2026-07-19).** A5 hubness diagnostic (suite-v2 re-export, ridge plane,
+measured today): the anti-hub hypothesis for Gate 2's failure is only
+partially confirmed. There is one Greek target, not three — all three
+PARALLEL_PAIRS entries match the same "Hesiod Theogony" document, queried by
+three different Hittite groups. Its SIF centroid has a strikingly low L2
+norm (4.02 vs. pool mean 4.69, std 0.32 — 1.8th percentile), suggesting
+near-cancellation from lexical diversity, but its mean cosine to the rest of
+the 820-doc Greek pool is only at the 15th percentile (0.853 vs. pool mean
+0.885) — below median, not bottom-decile — and its cosine to the 3 Hittite
+queries is just 0.79 std below the pool average (0.247 vs. 0.263). Ranks
+recomputed in the v2 space (kumarbi-theogony 340, illuyanka-typhon 770,
+ullikummi-typhon 733 of 820) are still worse than chance for 2 of 3 pairs
+but noticeably better than the v1 numbers that motivated the hypothesis
+(731/781/788), with kumarbi-theogony no longer bottom-decile at all.
+Verdict: partial — Theogony carries a real geometric anomaly (norm outlier)
+but not a clean "far from everything" anti-hub signature strong enough to
+fully explain systematically-worse-than-chance ranking; some pair-specific
+factor remains unaccounted for.
+
+**A6.** `shared/scripts/doc_eval.py`'s module docstring now carries a dated
+note: document-level tokenization there is raw `line.split()` + the slot
+normalizer, while FastText corpora pass through each slot's
+`05_clean_and_tokenize` — a known, accepted inconsistency of the parked
+doc-level plane, not to be "fixed" without re-running Gates 1/2.
+
 ## 2026-07-16 — Sanskrit slot shipped: sixth language, and the pre-registered anchor-quality read-out FIRES.
 
 **Slot summary.** DCS (Digital Corpus of Sanskrit, CC BY 4.0): 15,790 chapter

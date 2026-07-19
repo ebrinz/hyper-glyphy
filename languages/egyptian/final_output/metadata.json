@@ -5,35 +5,35 @@
     "vocab_size": 10833,
     "egyptian_fused_dim": 1536,
     "random_state": 42,
-    "train_size": 2280,
-    "test_size_count": 556,
-    "valid_anchors": 2836,
-    "total_anchors": 4152
+    "train_size": 2287,
+    "test_size_count": 538,
+    "valid_anchors": 2825,
+    "total_anchors": 4136
   },
   "spaces": {
     "gemma": {
       "dim": 768,
       "dtype": "float16",
-      "ridge_alpha": 10.0,
+      "ridge_alpha": 0.001,
       "ridge_source": "models/ridge_weights_gemma_whitened.npz",
       "target_source": "shared/models/english_gemma_whitened_768d.npz",
       "encoder_model": "google/embeddinggemma-300m",
       "accuracy": {
-        "top1": 15.468409586056644,
-        "top5": 19.172113289760347,
-        "top10": 21.78649237472767
+        "top1": 19.955654101995567,
+        "top5": 25.72062084257206,
+        "top10": 29.268292682926827
       }
     },
     "glove": {
       "dim": 300,
       "dtype": "float16",
-      "ridge_alpha": 0.0001,
+      "ridge_alpha": 0.001,
       "ridge_source": "models/ridge_weights.npz",
       "target_source": "languages/sumerian/data/processed/glove.6B.300d.txt",
       "accuracy": {
-        "top1": 14.814814814814813,
-        "top5": 19.825708061002178,
-        "top10": 22.004357298474943
+        "top1": 19.06873614190687,
+        "top5": 23.946784922394677,
+        "top10": 25.72062084257206
       }
     }
   }

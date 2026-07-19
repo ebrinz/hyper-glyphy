@@ -20,7 +20,36 @@
 
 > Numbers before 2026-07-06 measured surface-variant memorization, not translation — see the [experiment journal](docs/EXPERIMENT_JOURNAL.md), 2026-07-06 entry.
 
-The table below reports the **eval-redesign suite** (stratified CSLS, 50K candidates, lemma-group split): three regimes per slot — **dictionary** (in-sample: a fixed 1,000-anchor sample of the training set, measuring memorization of known glosses), **interpolation** (test anchors — always unseen lemmas — whose gold English gloss appears as a training target), **zero-shot** (test anchors whose gold gloss was never a training target) — plus a document-level panel (Sumerian ETCSL genre LOO and Hittite→Greek parallel retrieval). Gemma beats GloVe combined in 4 of 5 slots; Akkadian Gemma is anomalous (alpha-selection noise at near-zero val signal — see journal). Hittite zero-shot n is small (only 31% of test gold glosses are in-vocab of the 50K candidate set).
+The table below reports **suite v2** (2026-07-19): shared `gloss_filters` module anchors (negation/cross-reference/scaffold-word rejection, MIN_HIT_RATE 0.40 gate) and alpha selected via the val top-5 CSLS plateau rule (`alpha_selection=val_top5_csls_v2` — lowest alpha within 100/n_val pp of the max). Same three regimes per slot as suite v1 — **dictionary** (in-sample: a fixed 1,000-anchor sample of the training set, measuring memorization of known glosses), **interpolation** (test anchors — always unseen lemmas — whose gold English gloss appears as a training target), **zero-shot** (test anchors whose gold gloss was never a training target) — plus a document-level panel (Sumerian ETCSL genre LOO and Hittite→Greek parallel retrieval, unchanged from suite v1) and a new **gold OOV** column (test items whose gold gloss falls outside the 50K-candidate English vocabulary; see the caption below). Gemma beats GloVe combined in all 6 slots under v2 (the v1 Akkadian-Gemma pathology is fixed under v2's plateau rule; see journal 2026-07-19 entry). Full recipe deltas, per-slot anchor counts, and guardrail outcomes: journal 2026-07-19 entry.
+
+### Suite v2 (current, 2026-07-19)
+
+| Slot | Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn | Gold OOV | Family / Script |
+|------|--------|-------|:----------:|:------------:|:---------------:|:--------------:|:------------:|:--------:|:----------------|
+| [Sumerian](languages/sumerian/) | GloVe | 10 | 77.99% | 7.20% | 0.20% | 4.44% | 5.32% | 145/1240 | language isolate / cuneiform |
+| [Sumerian](languages/sumerian/) | Gemma | 1000 | 75.60% | 10.13% | 1.22% | 6.61% | 7.42% | 145/1240 | language isolate / cuneiform |
+| [Egyptian](languages/egyptian/) | GloVe | 1e-3 | 66.29% | 25.15% | 0.00% | 19.07% | 19.73% | 87/451 | Afroasiatic / hieroglyphic |
+| [Egyptian](languages/egyptian/) | Gemma | 1e-3 | 70.52% | 26.02% | 0.92% | 19.96% | 21.51% | 87/451 | Afroasiatic / hieroglyphic |
+| [Akkadian](languages/akkadian/) | GloVe | 10 | 38.47% | 0.00% | 0.24% | 0.18% | 0.69% | 95/2184 | East Semitic / cuneiform |
+| [Akkadian](languages/akkadian/) | Gemma | 0.01 † | 55.24% | 0.18% | 0.31% | 0.27% | 0.55% | 95/2184 | East Semitic / cuneiform |
+| [Hittite](languages/hittite/) | GloVe | 1e-4 | 67.99% | 8.90% | 0.00% ‡ | 5.01% | 5.01% | 850/419 | Indo-European (Anatolian) / cuneiform |
+| [Hittite](languages/hittite/) | Gemma | 1e-3 | 78.35% | 13.98% | 0.00% ‡ | 7.88% | 8.59% | 850/419 | Indo-European (Anatolian) / cuneiform |
+| [Greek](languages/greek/) | GloVe | 0.1 | 37.10% | 4.43% | 0.59% | 3.60% | 6.24% | 2145/15632 | Indo-European / alphabetic |
+| [Greek](languages/greek/) | Gemma | 1.0 | 50.11% | 6.07% | 0.68% | 4.91% | 8.12% | 2145/15632 | Indo-European / alphabetic |
+| [Sanskrit](languages/sanskrit/) | GloVe | 1e-4 | 35.16% | 3.47% | 0.09% | 2.95% | 4.79% | 1331/14217 | Indo-European (Indo-Aryan) / Devanagari (IAST) |
+| [Sanskrit](languages/sanskrit/) | Gemma | 1e4 § | 35.90% | 5.49% | 0.46% | 4.71% | 7.28% | 1331/14217 | Indo-European (Indo-Aryan) / Devanagari (IAST) |
+
+† Akkadian Gemma v1's alpha=1e4 flat-noise pick (dict 19.85%) is fixed under v2's plateau rule: same flat val sweep, lowest-alpha tie-break now picks alpha=0.01 (dict 55.24%); see journal 2026-07-19 entry.
+‡ Hittite zero-shot n=0 hits at both alphas; gold OOV 850/419 — the majority of test items are still OOV of the 50K candidate vocab; see journal 2026-07-09 entry.
+§ Sanskrit Gemma alpha=1e4 is a real interior signal max (not a flat-noise pick); USER-ACCEPTED TRADE 2026-07-18: trades in-sample dictionary accuracy (44.40% v1 → 35.90% v2) for generalization — all test strata improved; see journal 2026-07-19 entry.
+
+Accuracies are conditioned on gold glosses present in the 50k-candidate English vocabulary; the gold-OOV column counts test items excluded by that restriction.
+
+**Document-level panel.** Sumerian ETCSL genre leave-one-out (n=338, 5 genres, majority baseline 40.83%): gemma_aligned 63.31% (+22.5 pp), glove_aligned 60.95% (+20.1 pp), fused_unaligned 68.05% (+27.2 pp, projection cost ≈5 pp). Gate 1 PASS. Cross-language parallel retrieval (Hittite → Greek, pool=820): Kumarbi→Theogony rank 731/820, Illuyanka→Theogony 781/820, Ullikummi→Theogony 788/820, MRR 0.0013. Gate 2 FAIL — word-level alignment does not compose into cross-slot document retrieval; myth study proceeds via Plane B (native-space RSA). See [`docs/myth_study_plan.md`](docs/myth_study_plan.md) for the two-plane study design and go/no-go verdicts.
+
+Both alignment targets are accessible via per-language `Lookup` classes (`space="gemma"|"glove"`).
+
+### Suite v1 (archived 2026-07-16 — pre-gloss-filter anchors, val-top-1 alpha)
 
 | Slot | Target | alpha | Dict top-1 | Interp top-1 | Zero-shot top-1 | Combined top-1 | Combined syn | Family / Script |
 |------|--------|-------|:----------:|:------------:|:---------------:|:--------------:|:------------:|:----------------|
@@ -39,10 +68,6 @@ The table below reports the **eval-redesign suite** (stratified CSLS, 50K candid
 
 ¹ Akkadian Gemma alpha=1e4 is the grid ceiling (val-selection noise at ~0.06%); see journal 2026-07-09 entry.
 ² Hittite zero-shot n=144; 69% of test gold glosses are OOV of the 50K candidate vocab; see journal 2026-07-09 entry.
-
-**Document-level panel.** Sumerian ETCSL genre leave-one-out (n=338, 5 genres, majority baseline 40.83%): gemma_aligned 63.31% (+22.5 pp), glove_aligned 60.95% (+20.1 pp), fused_unaligned 68.05% (+27.2 pp, projection cost ≈5 pp). Gate 1 PASS. Cross-language parallel retrieval (Hittite → Greek, pool=820): Kumarbi→Theogony rank 731/820, Illuyanka→Theogony 781/820, Ullikummi→Theogony 788/820, MRR 0.0013. Gate 2 FAIL — word-level alignment does not compose into cross-slot document retrieval; myth study proceeds via Plane B (native-space RSA). See [`docs/myth_study_plan.md`](docs/myth_study_plan.md) for the two-plane study design and go/no-go verdicts.
-
-Both alignment targets are accessible via per-language `Lookup` classes (`space="gemma"|"glove"`).
 
 ### Research progress
 
