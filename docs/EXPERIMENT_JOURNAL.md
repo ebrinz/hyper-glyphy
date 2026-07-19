@@ -78,8 +78,7 @@ the flag sentence per spec §5 is not triggered — worth noting factually that
 sanskrit's 0.1198 sits closest of the four to the 0.12 band edge.
 
 **A5 hubness diagnostic (Task 11, suite-v2 re-export, ridge plane, measured
-2026-07-19).** A5 hubness diagnostic (suite-v2 re-export, ridge plane,
-measured today): the anti-hub hypothesis for Gate 2's failure is only
+2026-07-19).** The anti-hub hypothesis for Gate 2's failure is only
 partially confirmed. There is one Greek target, not three — all three
 PARALLEL_PAIRS entries match the same "Hesiod Theogony" document, queried by
 three different Hittite groups. Its SIF centroid has a strikingly low L2
@@ -95,7 +94,11 @@ but noticeably better than the v1 numbers that motivated the hypothesis
 Verdict: partial — Theogony carries a real geometric anomaly (norm outlier)
 but not a clean "far from everything" anti-hub signature strong enough to
 fully explain systematically-worse-than-chance ranking; some pair-specific
-factor remains unaccounted for.
+factor remains unaccounted for. Repro: the analysis script reconstructs the
+Gate-2 pool via doc_eval's loaders (importlib on `shared/scripts/doc_eval.py`),
+computes pool centroid norms + mean-cosine centrality, and ranks the targets;
+~40 lines, session scratchpad `task11_hubness.py` — reconstructable from this
+description against doc_eval's parallels entry point.
 
 **A6.** `shared/scripts/doc_eval.py`'s module docstring now carries a dated
 note: document-level tokenization there is raw `line.split()` + the slot

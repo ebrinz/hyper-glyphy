@@ -43,7 +43,7 @@ The table below reports **suite v2** (2026-07-19): shared `gloss_filters` module
 ‡ Hittite zero-shot n=0 hits at both alphas; gold OOV 850/419 — the majority of test items are still OOV of the 50K candidate vocab; see journal 2026-07-09 entry.
 § Sanskrit Gemma alpha=1e4 is a real interior signal max (not a flat-noise pick); USER-ACCEPTED TRADE 2026-07-18: trades in-sample dictionary accuracy (44.40% v1 → 35.90% v2) for generalization — all test strata improved; see journal 2026-07-19 entry.
 
-Accuracies are conditioned on gold glosses present in the 50k-candidate English vocabulary; the gold-OOV column counts test items excluded by that restriction.
+Accuracies are conditioned on gold glosses present in the 50k-candidate English vocabulary; the gold-OOV column counts test items excluded by that restriction. (shown as excluded/evaluated — e.g. Hittite's 850/419 means 850 test items excluded, 419 evaluated).
 
 **Document-level panel.** Sumerian ETCSL genre leave-one-out (n=338, 5 genres, majority baseline 40.83%): gemma_aligned 63.31% (+22.5 pp), glove_aligned 60.95% (+20.1 pp), fused_unaligned 68.05% (+27.2 pp, projection cost ≈5 pp). Gate 1 PASS. Cross-language parallel retrieval (Hittite → Greek, pool=820): Kumarbi→Theogony rank 731/820, Illuyanka→Theogony 781/820, Ullikummi→Theogony 788/820, MRR 0.0013. Gate 2 FAIL — word-level alignment does not compose into cross-slot document retrieval; myth study proceeds via Plane B (native-space RSA). See [`docs/myth_study_plan.md`](docs/myth_study_plan.md) for the two-plane study design and go/no-go verdicts.
 
@@ -73,6 +73,8 @@ Both alignment targets are accessible via per-language `Lookup` classes (`space=
 
 Active experiment log: [`docs/EXPERIMENT_JOURNAL.md`](docs/EXPERIMENT_JOURNAL.md). Sumerian-specific historical findings: [`languages/sumerian/docs/EXPERIMENT_JOURNAL.md`](languages/sumerian/docs/EXPERIMENT_JOURNAL.md). Recent findings (newest first):
 
+- **2026-07-19 — Suite v2 shipped: shared gloss filters + plateau alpha rule; combined test up in all six slots, Gemma 6/6, Akkadian-Gemma pathology fixed; Procrustes v2 all in-band.** See journal 2026-07-19 entry.
+- **2026-07-16 — Sanskrit sixth slot shipped; pre-registered Procrustes read-out fired the ≤0.12 band — stronger-anchors lever and Plane A retired.** See journal 2026-07-16 entry.
 - **2026-07-09 — Eval redesign shipped: stratified CSLS suite + document-level panel; all five slots measured (Greek first run).** Three-stratum eval (dictionary/interpolation/zero-shot), CSLS retrieval, 50K candidates, leak-check 0.00% all five slots. Genre LOO PASS (gemma_aligned 63.31% vs 40.83% majority). Parallel retrieval FAIL (MRR 0.0013; myth study routes to Plane B native-space RSA). See journal 2026-07-09 entry and [`docs/myth_study_plan.md`](docs/myth_study_plan.md).
 - **2026-07-06 — Eval integrity: lemma-group split + validation-selected alpha; all prior headline numbers invalidated.** Surface-variant train/test leakage (32–65% of test items had a same-gloss train anchor within edit distance 1) and test-set alpha tuning inflated every slot's accuracy. Fixed across all five language pipelines via a shared union-find group split (64/16/20 train/val/test) with alpha selected on validation. Akkadian rerun as evidence: GloVe 27.79% → 0.09%, whitened-Gemma 36.43% → 0.14% top-1; a three-way diagnostic (44.4% train-set accuracy, exact reproduction of the old number under the old split, 16.3% seen-gloss test rate) confirms the collapse is real zero-shot difficulty, not a bug. Remaining reruns deferred pending an eval redesign (seen/unseen strata, CSLS, restricted candidate vocab, document-level evaluation). See the journal entry for the full writeup.
 - **2026-05-11 — Greek scaffold (G1–G4): parser, LSJ glosses, clean, anchors, FastText + alignment scripts ready; first run pending eval redesign.** 106,260 anchors, 10.2M-token Diorisis corpus (Homer to 5th c. AD). See [`languages/greek/`](languages/greek/).
@@ -219,6 +221,7 @@ Python 3.12) — they are version-sensitive pickles.
 Notes:
 - Updates are incremental: `hf upload` is path-scoped and the backend deduplicates
   at chunk level, so refreshing one slot never re-uploads the rest.
+- The pre-v2 artifact state is pinned as the `suite-v1` tag on the HF repo (`hf download ... --revision suite-v1`); the archived v1 table above reproduces from it.
 - Raw third-party corpora are **not** mirrored (licensing varies by source);
   each slot documents its fetch steps in `languages/<slot>/data/raw/README.md`.
 - MW-derived Sanskrit files in the mirror carry CC BY-NC-SA 3.0 (Cologne CDSL);
