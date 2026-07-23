@@ -32,6 +32,7 @@ SIF_A = 1e-3
 _TOKEN_RE = re.compile(r"[a-zA-ZšŠḫḪṭṬṣṢĝĜ]+\d*")
 
 ETCSL_PATH = _ROOT / "languages" / "sumerian" / "data" / "raw" / "etcsl_texts.json"
+SANSKRIT_TEXTS_PATH = _ROOT / "languages" / "sanskrit" / "data" / "raw" / "sanskrit_texts.json"
 
 
 def _tokenize_sumerian(text):
@@ -174,8 +175,12 @@ def mean_reciprocal_rank(ranks):
     return round(sum(1.0 / r for r in ranks) / len(ranks), 4)
 
 
-def _slot_documents():
-    """Per-slot {doc_id: tokens} for the slots with per-text corpora."""
+def _slot_documents(slot=None):
+    """Per-slot {doc_id: tokens} for the slots with per-text corpora.
+
+    If slot is None, returns {slot: {doc_id: tokens}}.
+    If slot is specified, returns {doc_id: tokens} for that slot only.
+    """
     docs = {}
     with open(ETCSL_PATH) as f:
         comps = parse_etcsl_compositions(json.load(f))
@@ -183,15 +188,23 @@ def _slot_documents():
 
     from languages.hittite.scripts.hittite_normalize import normalize_hittite_token
     from languages.greek.scripts.greek_normalize import normalize_greek_token
+    from languages.sanskrit.scripts.sanskrit_normalize import normalize_sanskrit_token
 
-    for slot, normalizer in (("hittite", normalize_hittite_token),
-                             ("greek", normalize_greek_token)):
-        path = _ROOT / "languages" / slot / "data" / "raw" / f"{slot}_texts.json"
+    for slot_name, normalizer in (("hittite", normalize_hittite_token),
+                                   ("greek", normalize_greek_token),
+                                   ("sanskrit", normalize_sanskrit_token)):
+        if slot_name == "sanskrit":
+            path = SANSKRIT_TEXTS_PATH
+        else:
+            path = _ROOT / "languages" / slot_name / "data" / "raw" / f"{slot_name}_texts.json"
         out = {}
         for t in json.load(open(path)):
             toks = [normalizer(w) for line in t["lines"] for w in line.split()]
             out[t["p_number"]] = [tok for tok in toks if tok]
-        docs[slot] = out
+        docs[slot_name] = out
+
+    if slot is not None:
+        return docs.get(slot, {})
     return docs
 
 
