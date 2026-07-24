@@ -31,12 +31,20 @@ from shared.scripts.doc_eval import (  # noqa: E402
     doc_centroid,
     sif_weights,
 )
+from languages.sanskrit.scripts.sanskrit_normalize import normalize_sanskrit_token  # noqa: E402
 
 SEED = 42
 N_NULL_DRAWS = 1000
 MAX_PERMS = 1000
-SLOTS = ("sumerian", "hittite", "greek")
+SLOTS = ("sumerian", "hittite", "greek", "sanskrit")
 THEMES = ("cosmogonic", "hymnic", "wisdom", "royal_control", "magical")
+
+
+def enumerate_slot_pairs():
+    """All unordered slot pairs, deterministic order from SLOTS."""
+    return [(a, b) for i, a in enumerate(SLOTS) for b in SLOTS[i + 1:]]
+
+
 CONCEPTS = ("water", "chaos", "serpent", "name", "fate", "bind", "create",
             "mountain", "flood", "sky")
 
@@ -72,6 +80,17 @@ GREEK_ROYAL_CONTROL = ("Homer (0012) - Iliad (001)",
                        "Herodotus (0016) - Histories (001)",
                        "Thucydides (0003) - History (001)",
                        "Xenophon (0032) - Anabasis (006)")
+
+# --- Sanskrit roster (DCS; pinned 2026-07-23, spec 2026-07-23) ---
+SANSKRIT_TEXTS_PATH = _ROOT / "languages" / "sanskrit" / "data" / "raw" / "sanskrit_texts.json"
+SANSKRIT_COSMOGONIC = ("dcs-450-9905", "dcs-450-9864", "dcs-450-9896", "dcs-450-9978")
+SANSKRIT_MERGES = {"vrtra": ("dcs-450-10015", "dcs-450-10119", "dcs-450-10060")}
+SANSKRIT_HYMNIC = ("dcs-450-11102", "dcs-450-10579", "dcs-450-11071", "dcs-450-9859", "dcs-450-10697")
+SANSKRIT_WISDOM_TEXTS = ("Jaiminīya-Upaniṣad-Brāhmaṇa", "Bṛhadāraṇyakopaniṣad",
+                         "Chāndogyopaniṣad", "Taittirīyopaniṣad", "Kaṭhopaniṣad")
+SANSKRIT_ROYAL = ("dcs-464-10474", "dcs-464-10475", "dcs-464-10522", "dcs-464-10546", "dcs-464-11445")
+SANSKRIT_MAGICAL_EXCLUDED_BOOKS = {"14", "18"}   # AV wedding/funerary liturgy, not charms
+SANSKRIT_AV_NAME = "Atharvaveda (Śaunaka)"
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +280,84 @@ def build_roster(corpora):
         "Greek Magical Papyri (PGM) are not in the Diorisis literary corpus; the "
         "Greek magical slot is EMPTY and every magical-theme comparison excludes Greek")
 
+    # --- sanskrit ---
+    sk_roster, sk_tokens = build_sanskrit_roster()
+    for theme in THEMES:
+        for entry in sk_roster[theme]:
+            did = entry["doc_id"]
+            roster["sanskrit"][theme].append(_entry(did, sk_tokens[did]))
+            roster_tokens["sanskrit"][did] = sk_tokens[did]
+    notes["sanskrit"]["cosmogonic"]["rule"] = (
+        "pinned DCS Ṛgveda cosmogonic hymns + vrtra merge (dcs-450-10015+10119+10060)")
+    notes["sanskrit"]["hymnic"]["rule"] = "pinned DCS Ṛgveda hymnic chapters"
+    notes["sanskrit"]["wisdom"]["rule"] = (
+        "pinned principal Upaniṣads, grouped by text_name into one doc each")
+    notes["sanskrit"]["royal_control"]["rule"] = "pinned DCS Atharvaveda royal-control chapters"
+    notes["sanskrit"]["magical"]["rule"] = (
+        "5 longest Atharvaveda (Śaunaka) chapters, excluding royal-control picks and "
+        f"books {sorted(SANSKRIT_MAGICAL_EXCLUDED_BOOKS)} (wedding/funerary liturgy)")
+
     return roster, notes, roster_tokens
+
+
+def build_sanskrit_roster():
+    """Sanskrit five-theme roster. Returns (roster_by_theme, tokens_by_doc).
+
+    Chapter-level docs come straight from the raw corpus (DCS chapters are
+    hymn-granular); wisdom texts are grouped by text_name; the vrtra doc is
+    a HITTITE_MERGES-style concatenation. Raises ValueError naming any
+    pinned ID absent from the corpus.
+    """
+    with open(SANSKRIT_TEXTS_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    by_p = {t["p_number"]: t for t in raw}
+
+    pinned = (SANSKRIT_COSMOGONIC + tuple(x for m in SANSKRIT_MERGES.values() for x in m)
+              + SANSKRIT_HYMNIC + SANSKRIT_ROYAL)
+    missing = [p for p in pinned if p not in by_p]
+    if missing:
+        raise ValueError(f"sanskrit roster: pinned DCS ids missing from corpus: {missing}")
+
+    def toks(entry):
+        return [normalize_sanskrit_token(w) for line in entry["lines"] for w in line.split()]
+
+    tokens: dict[str, list[str]] = {}
+    roster: dict[str, list[dict]] = {t: [] for t in
+                                     ("cosmogonic", "hymnic", "wisdom", "royal_control", "magical")}
+
+    def add(theme, doc_id, token_list, label):
+        tokens[doc_id] = token_list
+        roster[theme].append({"doc_id": doc_id, "label": label, "n_tokens": len(token_list)})
+
+    for p in SANSKRIT_COSMOGONIC:
+        add("cosmogonic", p, toks(by_p[p]), by_p[p]["chapter"])
+    for merge_id, members in SANSKRIT_MERGES.items():
+        merged = [w for m in members for w in toks(by_p[m])]
+        add("cosmogonic", merge_id, merged, "+".join(by_p[m]["chapter"] for m in members))
+    for p in SANSKRIT_HYMNIC:
+        add("hymnic", p, toks(by_p[p]), by_p[p]["chapter"])
+    for name in SANSKRIT_WISDOM_TEXTS:
+        chapters = [t for t in raw if t["text_name"] == name]
+        if not chapters:
+            raise ValueError(f"sanskrit roster: wisdom text absent from corpus: {name}")
+        merged = [w for c in chapters for w in toks(c)]
+        add("wisdom", name, merged, name)
+    for p in SANSKRIT_ROYAL:
+        add("royal_control", p, toks(by_p[p]), by_p[p]["chapter"])
+
+    def av_book(entry):
+        parts = [s.strip() for s in entry["chapter"].split(",")]
+        return parts[1] if len(parts) > 1 else ""
+
+    candidates = [t for t in raw
+                  if t["text_name"] == SANSKRIT_AV_NAME
+                  and t["p_number"] not in SANSKRIT_ROYAL
+                  and av_book(t) not in SANSKRIT_MAGICAL_EXCLUDED_BOOKS]
+    candidates.sort(key=lambda t: (-sum(len(l.split()) for l in t["lines"]), t["p_number"]))
+    for t in candidates[:5]:
+        add("magical", t["p_number"], toks(t), t["chapter"])
+
+    return roster, tokens
 
 
 # ---------------------------------------------------------------------------
@@ -440,8 +536,7 @@ def run():
 
     # ---- Plane B (iii): slot-pair structural RSA on theme ladders ----
     pair_rsa = {}
-    slot_pairs = [("hittite", "greek"), ("hittite", "sumerian"),
-                  ("greek", "sumerian")]
+    slot_pairs = enumerate_slot_pairs()
     theme_cents = {}
     for slot in SLOTS:
         members = _members_by_theme(roster, slot)
