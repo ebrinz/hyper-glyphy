@@ -137,6 +137,8 @@ in-vocab centroid; the zero-in-vocab stop-and-surface gate never fired.
 
 Spec: [`docs/superpowers/specs/2026-07-23-myth-k5-sanskrit-design.md`](superpowers/specs/2026-07-23-myth-k5-sanskrit-design.md).
 
+**Findings paper.** The full arc is written up in [`docs/findings/hyper-glyphy-findings-2026-07.md`](findings/hyper-glyphy-findings-2026-07.md) / [`.pdf`](findings/hyper-glyphy-findings-2026-07.pdf).
+
 ## 2026-07-19 — Suite v2 shipped: shared gloss_filters + alpha-v2 plateau rule, all six slots re-run.
 
 **Recipe deltas.** `shared/scripts/gloss_filters.py` is now the single source

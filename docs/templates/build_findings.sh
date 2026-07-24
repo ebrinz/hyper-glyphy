@@ -7,6 +7,7 @@ OUT=${2:?usage: build_findings.sh <in.md> <out.pdf>}
 pandoc "$IN" -o "$OUT" \
   --template=docs/templates/hyper-glyphy-pandoc.tex \
   --pdf-engine=xelatex \
+  --resource-path=.:docs/findings \
   -V mainfont="Times New Roman" \
   -V monofont="Menlo" \
   -V fontsize=11pt \

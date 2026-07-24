@@ -559,7 +559,7 @@ source); each slot documents its fetch steps in
 mirror carry CC BY-NC-SA 3.0 (Cologne CDSL); everything computed in the
 project is CC BY 4.0. Myth-study numbers in this paper are read directly
 from the git-tracked `shared/results/myth_study.json`; all verdict
-sentences are byte-copies from `docs/EXPERIMENT_JOURNAL.md` (entries
+sentences are byte-copies from `\nolinkurl{docs/EXPERIMENT_JOURNAL.md}`{=latex} (entries
 2026-07-16, 2026-07-19, 2026-07-24).
 
 # References {-}
@@ -581,7 +581,7 @@ sentences are byte-copies from `docs/EXPERIMENT_JOURNAL.md` (entries
 - **LSJ** — Liddell-Scott-Jones lexicon, Perseus Digital Library
   (`github.com/PerseusDL/lexica`).
 - **DCS** — Hellwig, O., *The Digital Corpus of Sanskrit (DCS)*,
-  2010–2024. `github.com/OliverHellwig/sanskrit` (CC BY 4.0).
+  2010–2024. <https://github.com/OliverHellwig/sanskrit> (CC BY 4.0).
 - **Monier-Williams** — *A Sanskrit-English Dictionary* (1899), Cologne
   Digital Sanskrit Lexicon (CDSL) 2020 digitization, The Sanskrit Library
   and Thomas Malten (CC BY-NC-SA 3.0).
