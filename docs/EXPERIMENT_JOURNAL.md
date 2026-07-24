@@ -60,10 +60,12 @@ combat-myth link"** — the study's first pre-registered positive, and on
 the phylogenetically closest pair (both Indo-European, both featuring a
 storm-god/serpent combat myth). Stated plainly: this is one sub-control
 clearing the band by a narrow margin (90.55 vs the 90th-pctile line), not
-a strong positive — the results JSON's discreteness note for this ladder
-records that ~0.0% of the 1000-draw null ties at ρ=+0.5 or ρ=+1.0, so the
-90.55th percentile is a real (non-tied) rank, but the margin over the
-band edge is 0.55 points. **vs Theogony (K=3 ladder), ρ=0.5,
+a strong positive — the 90.55th percentile is a midrank value: the .55
+margin itself reflects null draws tying the observed ρ=0.4 (the tie mass
+at the observed value is not separately recorded in this run), so the
+clearance over the 90th-percentile band is within one tie-block's width.
+The pre-registered verdict is defined on the midrank percentile and
+stands; the discreteness caveat applies with full force. **vs Theogony (K=3 ladder), ρ=0.5,
 percentile=62.3** ⇒ verdict verbatim **"fails, consistent with the
 Kumarbi-control finding."** Discreteness note for this ladder: ~75.4% of
 the null ties at ρ=+0.5 — the Vṛtra-vs-Theogony profile sits exactly at
