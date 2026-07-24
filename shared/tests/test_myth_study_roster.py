@@ -60,6 +60,11 @@ def test_sanskrit_roster_from_fixture(tmp_path, monkeypatch):
     assert not (mag_ids & set(_mod.SANSKRIT_ROYAL))
 
 
+def test_pair_keys_match_ie_lookups():
+    keys = {f"{a}-{b}" for a, b in _mod.enumerate_slot_pairs()}
+    assert {"hittite-greek", "sumerian-hittite", "sumerian-greek"} <= keys
+
+
 def test_missing_pinned_id_raises(tmp_path, monkeypatch):
     docs = _fixture_texts()
     docs = [d for d in docs if d["p_number"] != _mod.SANSKRIT_COSMOGONIC[0]]

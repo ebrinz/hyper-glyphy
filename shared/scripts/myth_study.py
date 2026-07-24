@@ -555,8 +555,8 @@ def run():
         pair_rsa[f"{a}-{b}"] = out
     results["slot_pair_rsa"] = pair_rsa
     rho_hg = pair_rsa["hittite-greek"]["rho"]
-    rho_hs = pair_rsa["hittite-sumerian"]["rho"]
-    rho_gs = pair_rsa["greek-sumerian"]["rho"]
+    rho_hs = pair_rsa["sumerian-hittite"]["rho"]
+    rho_gs = pair_rsa["sumerian-greek"]["rho"]
     results["ie_gradient"] = {
         "rho_hittite_greek": rho_hg, "rho_hittite_sumerian": rho_hs,
         "rho_greek_sumerian": rho_gs,
