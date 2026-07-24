@@ -554,13 +554,18 @@ def run():
         out.update({"ladder": ladder, "themes_dropped_from_ladder": dropped})
         pair_rsa[f"{a}-{b}"] = out
     results["slot_pair_rsa"] = pair_rsa
-    rho_hg = pair_rsa["hittite-greek"]["rho"]
-    rho_hs = pair_rsa["sumerian-hittite"]["rho"]
-    rho_gs = pair_rsa["sumerian-greek"]["rho"]
+    ie_keys = ("hittite-greek", "hittite-sanskrit", "greek-sanskrit")
+    non_ie_keys = ("sumerian-hittite", "sumerian-greek", "sumerian-sanskrit")
+
+    def _rho(k):
+        return pair_rsa[k]["rho"] if k in pair_rsa and pair_rsa[k].get("rho") is not None else None
+    ie_vals = [r for k in ie_keys if (r := _rho(k)) is not None]
+    non_ie_vals = [r for k in non_ie_keys if (r := _rho(k)) is not None]
     results["ie_gradient"] = {
-        "rho_hittite_greek": rho_hg, "rho_hittite_sumerian": rho_hs,
-        "rho_greek_sumerian": rho_gs,
-        "hittite_greek_highest": bool(rho_hg > rho_hs and rho_hg > rho_gs)}
+        **{f"rho_{k.replace('-', '_')}": _rho(k) for k in ie_keys + non_ie_keys},
+        "ie_pairs_mean": (sum(ie_vals) / len(ie_vals)) if ie_vals else None,
+        "non_ie_pairs_mean": (sum(non_ie_vals) / len(non_ie_vals)) if non_ie_vals else None,
+    }
 
     # ---- Plane B (ii): doc-level positive control (kumarbi et al. vs Theogony) ----
     ladder_hg = _shared_ladder(roster, "hittite", "greek")
@@ -617,6 +622,60 @@ def run():
         "claims narrow to within-language planes"
     )
     results["positive_control"] = positive_control
+
+    # --- Vrtra positive control (pre-registered, spec 2026-07-23) ---
+    # Profile of the merged vrtra doc in sanskrit native space, Spearman vs
+    # illuyanka (hittite) and Theogony (greek) profiles, each against a
+    # bootstrap null of non-cosmogonic sanskrit docs profiled the same way.
+    vrtra_control = {"ladder": {}, "n_null": N_NULL_DRAWS, "sub_controls": {},
+                     "bands": {"supports": ">=90th pctile", "fails": "<=75th pctile",
+                               "else": "inconclusive"}}
+    members_s = _members_by_theme(roster, "sanskrit")
+    for name, other_slot, other_doc in (("vs_illuyanka", "hittite", "illuyanka"),
+                                        ("vs_theogony", "greek", GREEK_THEOGONY)):
+        ladder_s = _shared_ladder(roster, "sanskrit", other_slot)
+        members_o = _members_by_theme(roster, other_slot)
+        prof_s = {d: doc_profile(d, native_cents["sanskrit"], members_s, ladder_s)
+                  for d in _slot_doc_ids(roster, "sanskrit")
+                  if d in native_cents["sanskrit"]}
+        prof_o = {d: doc_profile(d, native_cents[other_slot], members_o, ladder_s)
+                  for d in _slot_doc_ids(roster, other_slot)
+                  if d in native_cents[other_slot]}
+
+        ref = prof_o[other_doc]
+        vrtra = prof_s["vrtra"]
+        noncosmo_s = [d for t in THEMES if t != "cosmogonic"
+                      for e in roster["sanskrit"][t]
+                      if (d := e["doc_id"]) in prof_s]
+        null = []
+        for _ in range(N_NULL_DRAWS):
+            d = noncosmo_s[rng.integers(len(noncosmo_s))]
+            null.append(spearmanr(prof_s[d], ref).statistic)
+        null = [r for r in null if not np.isnan(r)]
+
+        rho = float(spearmanr(vrtra, ref).statistic)
+        percentile = round(percentile_in_null(rho, null), 2)
+        if percentile >= 90:
+            verdict = "supports the IE combat-myth link"
+        elif percentile <= 75:
+            verdict = "fails, consistent with the Kumarbi-control finding"
+        else:
+            verdict = "inconclusive"
+
+        null_arr = np.asarray(null, dtype=np.float64)
+        frac_at_half = float((null_arr == 0.5).sum()) / len(null_arr) if len(null_arr) else 0.0
+        frac_at_one = float((null_arr == 1.0).sum()) / len(null_arr) if len(null_arr) else 0.0
+        discreteness_note = (
+            f"{len(ladder_s)}-point Spearman (K={len(ladder_s)} ladder) takes only "
+            f"discrete values; ~{round(frac_at_half * 100, 1):.1f}% of null draws tie "
+            f"at rho=+0.5 and ~{round(frac_at_one * 100, 1):.1f}% tie at rho=+1.0."
+        )
+
+        vrtra_control["ladder"][name] = ladder_s
+        vrtra_control["sub_controls"][name] = {
+            "rho": round(rho, 4), "percentile": percentile, "verdict": verdict,
+            "n_null": len(null), "discreteness_note": discreteness_note}
+    results["vrtra_control"] = vrtra_control
 
     # ---- Translation delta (within-language) ----
     tdelta = {}
@@ -746,8 +805,8 @@ def run():
         print(f"  {k:<18} rho={v['rho']:+.3f}  p={v['p']:.3f} "
               f"(n_perms={v['n_perms']}, exhaustive={v['exhaustive']}) "
               f"ladder={v['ladder']}")
-    print(f"  IE gradient (hittite-greek highest): "
-          f"{results['ie_gradient']['hittite_greek_highest']}")
+    print(f"  IE gradient: ie_pairs_mean={results['ie_gradient']['ie_pairs_mean']} "
+          f"non_ie_pairs_mean={results['ie_gradient']['non_ie_pairs_mean']}")
     print("\n=== Translation delta (native vs aligned, within-language) ===")
     for slot, v in tdelta.items():
         print(f"  {slot:<9} n={v['n_docs']:>2}  spearman={v['spearman']:+.3f}")
