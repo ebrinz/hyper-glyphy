@@ -4,6 +4,137 @@ Cross-language experiment log. Reverse chronological — newest at the top.
 
 ## Recent findings (newest first)
 
+## 2026-07-24 — Myth study K=5: Sanskrit fourth slot — first adequately-powered Plane-B test returns a null; Vṛtra clears the IE combat-myth control band.
+
+**What changed.** `shared/scripts/myth_study.py`'s `SLOTS` gains a fourth
+member, `("sumerian", "hittite", "greek", "sanskrit")`, and `slot_pairs`
+is now `itertools.combinations(SLOTS, 2)` (3 pairs → 6). Sanskrit is the
+only slot that fills all five themes (cosmogonic, hymnic, wisdom,
+royal_control, magical), so `sanskrit-sumerian` is the study's first K=5
+ladder (exhaustive min p = 1/120 ≈ 0.008); Hittite still lacks wisdom, so
+`hittite-sanskrit` caps at K=4. `doc_eval.py::_slot_documents` registers
+`sanskrit → languages/sanskrit/data/raw/sanskrit_texts.json` with
+`normalize_sanskrit_token`, mirroring the Hittite/Greek generic
+p_number+lines loader. Whole study re-run on suite-v2 spaces
+(`fused_embeddings_1536d.npz`, `sanskrit_aligned_gemma_vectors.npz`,
+`english_gemma_whitened_768d.npz`) for all four slots.
+
+**Sanskrit roster (5 themes, DCS chapter-level p_numbers, pinned
+2026-07-23).** Cosmogonic: RV 10.129, 10.90, 10.121, 10.190, plus a merged
+`vrtra` doc = RV 1.32 + 1.80 + 2.12 (`dcs-450-10015+10119+10060`,
+concatenated in that order, 862 tokens — a `HITTITE_MERGES`-style join).
+Hymnic: 5 longest RV hymns outside the cosmogonic roster
+(`dcs-450-11102/10579/11071/9859/10697`). Wisdom: 5 principal Upaniṣads
+grouped by `text_name` into one doc each — Jaiminīya-Upaniṣad-Brāhmaṇa,
+Bṛhadāraṇyakopaniṣad, Chāndogyopaniṣad, Taittirīyopaniṣad, Kaṭhopaniṣad.
+Royal_control: 5 Atharvaveda (Śaunaka) royal-consecration chapters, AV
+3.3/3.4/4.8/4.22/6.87. Magical: 5 longest AV chapters not already claimed
+by royal_control and **excluding books 14 and 18** — AV 14 is the wedding
+(vivāha) liturgy and AV 18 is the funerary (antyeṣṭi) liturgy, neither of
+which is incantation/charm material, so both are excluded from the
+magical theme by rule rather than by length ranking (result: AV
+11.3/12.3/12.1/10.5/13.1). Every pinned ID resolved against the corpus;
+zero dropped docs (see below).
+
+**Pre-registered read-out 1 — K=5 ladder RSA.** Bands, restated: shared
+ladder reaches its maximum (K=5 for sanskrit-sumerian, K=4 for
+hittite-sanskrit) → exhaustive permutation p ≤ 0.05 with positive
+Spearman ρ = the study's first adequately-powered Plane-B positive,
+stated as such; p > 0.05 = a real, reportable null ("thematic geometry
+does not detectably align"), stated as such. Measured:
+**sanskrit-sumerian K=5, ρ=−0.3333, exhaustive p=0.7667 (n_perms=120)** —
+p > 0.05, verdict verbatim: **"a real, reportable null — thematic
+geometry does not detectably align."** This is the study's first
+adequately-powered Plane-B test, and it comes back negative-signed and
+null. `hittite-sanskrit` K=4 (ρ=−0.3714, p=0.8333, n_perms=24) is also
+null under the same rule — Hittite's missing wisdom theme caps it one
+short of K=5, but the read is the same direction.
+
+**Pre-registered read-out 2 — Vṛtra positive control.** Bands, restated:
+percentile of the Vṛtra profile correlation in the same-genre null ≥ 90th
+⇒ "supports the IE combat-myth link"; ≤ 75th ⇒ "fails, consistent with
+the Kumarbi-control finding"; between ⇒ "inconclusive." Both sub-controls
+measured against `N_NULL_DRAWS = 1000`: **vs Illuyanka (K=4 ladder),
+ρ=0.4, percentile=90.55** ⇒ verdict verbatim **"supports the IE
+combat-myth link"** — the study's first pre-registered positive, and on
+the phylogenetically closest pair (both Indo-European, both featuring a
+storm-god/serpent combat myth). Stated plainly: this is one sub-control
+clearing the band by a narrow margin (90.55 vs the 90th-pctile line), not
+a strong positive — the results JSON's discreteness note for this ladder
+records that ~0.0% of the 1000-draw null ties at ρ=+0.5 or ρ=+1.0, so the
+90.55th percentile is a real (non-tied) rank, but the margin over the
+band edge is 0.55 points. **vs Theogony (K=3 ladder), ρ=0.5,
+percentile=62.3** ⇒ verdict verbatim **"fails, consistent with the
+Kumarbi-control finding."** Discreteness note for this ladder: ~75.4% of
+the null ties at ρ=+0.5 — the Vṛtra-vs-Theogony profile sits exactly at
+the null's tied mode, the same pattern the Kumarbi control showed at K=3.
+
+**All six pair RSAs (ladder K / ρ / exhaustive p / n_perms).**
+
+| Pair | K | ρ | p | n_perms | Ladder (dropped themes) |
+|------|:-:|:-:|:-:|:-------:|--------------------------|
+| sumerian-hittite | 4 | 0.3143 | 0.25 | 24 | cosmogonic, hymnic, royal_control, magical (dropped: wisdom) |
+| sumerian-greek | 3 | 1.0 | 0.1667 | 6 | cosmogonic, hymnic, royal_control (dropped: wisdom, magical) |
+| **sumerian-sanskrit** | **5** | **−0.3333** | **0.7667** | **120** | all five themes (none dropped) |
+| hittite-greek | 3 | 0.5 | 0.5 | 6 | cosmogonic, hymnic, royal_control (dropped: magical) |
+| hittite-sanskrit | 4 | −0.3714 | 0.8333 | 24 | cosmogonic, hymnic, royal_control, magical (dropped: wisdom) |
+| greek-sanskrit | 3 | −0.5 | 0.8333 | 6 | cosmogonic, hymnic, royal_control (dropped: wisdom, magical) |
+
+`sumerian-hittite` (K=4, 0.3143/0.25) and `hittite-greek` (K=3, 0.5/0.5)
+are unchanged from the v1/K=4 measurement (commit 2fb7dcb) — Plane B RSA
+over previously-measured pairs is stable under suite v2 because it runs
+entirely on native fused embeddings, which suite v2 did not touch (v2
+changed anchors/alpha-selection for the Ridge alignment maps only). IE
+gradient (now 6 named keys): `ie_pairs_mean` (hittite-greek,
+sanskrit-hittite, sanskrit-greek) = **−0.1238**; `non_ie_pairs_mean` = **0.327**
+— both Sanskrit pairs are negative, so adding the IE triangle's third leg
+does not elevate the IE-relatedness gradient; if anything the non-IE
+pairs read higher on this measurement.
+
+**Kumarbi control: re-measured on v2, identical to v1.** The doc-level
+positive control (kumarbi/ullikummi/illuyanka vs Theogony) is pure Plane
+B — native fused-space profiles against a 2000-draw same-genre null — so
+re-running it on suite-v2 spaces reproduces the v1 numbers bit-for-bit:
+kumarbi-theogony ρ=0.5, percentile=58.98; ullikummi-theogony ρ=0.5,
+percentile=58.98; illuyanka-theogony ρ=1.0, percentile=90.15 (v1 values,
+commit af869df, 2026-07-12 — both named plan controls
+(CTH 344 kumarbi, CTH 345 ullikummi) sit at the null's 42.6%-tied mode at
+ρ=+0.5; the non-plan-named Illuyanka pair reaches the discreteness
+ceiling at ρ=+1.0, ~19.7% of the null tied there). Verdict, unchanged:
+**"FAIL — named controls at null mode; per plan, cross-language doc-level
+claims narrow to within-language planes."** This bit-for-bit
+reproduction is itself informative: it confirms the Kumarbi control's
+result is a property of the native fused embeddings, not an artifact of
+the (now-changed) Ridge alignment recipe.
+
+**Translation delta v2 (native-vs-aligned Spearman per slot).** Sumerian
+0.8838 (v1 0.8916, n_docs 39); Hittite 0.8514 (v1 0.8115, n_docs 18);
+Greek 0.9044 (v1 0.9154, n_docs 12); **Sanskrit 0.9378 (new, n_docs 25,
+highest of the four slots)**. All four slots stay within the v1 range
+(0.81–0.92); Sanskrit's addition extends that range's upper edge to
+0.938 rather than breaking it.
+
+**Concept fingerprints (cosmogonic, cross-slot, second-order,
+within-language centroids in aligned space).** All four slots'
+`fingerprint_status` = "ok" (all 10 concepts present in each whitened-Gemma
+cache). Six cross-slot correlations: sumerian-greek 0.8788, greek-sanskrit
+0.8182, sumerian-hittite 0.7939, hittite-greek 0.7212, sumerian-sanskrit
+0.7091, **hittite-sanskrit 0.6242 (weakest link)**. v1's three pairs
+(hittite-greek 0.8061, hittite-sumerian 0.903, greek-sumerian 0.8303) all
+shift under v2's changed aligned-space maps — sumerian-hittite drops most
+(0.903 → 0.7939), sumerian-greek rises slightly (0.8303 → 0.8788). Per
+the results JSON's `baseline_note`, all of these matched-theme values must
+be read against the mismatched-theme cross-slot baseline (mean 0.55–0.85,
+max 0.73–0.96 depending on the pair) — none of the six is dramatically
+elevated above its own pair's mismatched baseline.
+
+**Dropped-doc accounting: none.** `dropped_docs` in the results JSON is
+empty for all four slots (`sumerian: []`, `hittite: []`, `greek: []`,
+`sanskrit: []`) — every pinned Sanskrit roster ID resolved to a non-empty
+in-vocab centroid; the zero-in-vocab stop-and-surface gate never fired.
+
+Spec: [`docs/superpowers/specs/2026-07-23-myth-k5-sanskrit-design.md`](superpowers/specs/2026-07-23-myth-k5-sanskrit-design.md).
+
 ## 2026-07-19 — Suite v2 shipped: shared gloss_filters + alpha-v2 plateau rule, all six slots re-run.
 
 **Recipe deltas.** `shared/scripts/gloss_filters.py` is now the single source
