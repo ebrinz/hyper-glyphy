@@ -357,6 +357,118 @@
         }
       ],
       "magical": []
+    },
+    "sanskrit": {
+      "cosmogonic": [
+        {
+          "doc_id": "dcs-450-9905",
+          "n_tokens": 153
+        },
+        {
+          "doc_id": "dcs-450-9864",
+          "n_tokens": 244
+        },
+        {
+          "doc_id": "dcs-450-9896",
+          "n_tokens": 194
+        },
+        {
+          "doc_id": "dcs-450-9978",
+          "n_tokens": 35
+        },
+        {
+          "doc_id": "vrtra",
+          "n_tokens": 862
+        }
+      ],
+      "hymnic": [
+        {
+          "doc_id": "dcs-450-11102",
+          "n_tokens": 1091
+        },
+        {
+          "doc_id": "dcs-450-10579",
+          "n_tokens": 1024
+        },
+        {
+          "doc_id": "dcs-450-11071",
+          "n_tokens": 933
+        },
+        {
+          "doc_id": "dcs-450-9859",
+          "n_tokens": 732
+        },
+        {
+          "doc_id": "dcs-450-10697",
+          "n_tokens": 518
+        }
+      ],
+      "wisdom": [
+        {
+          "doc_id": "Jaiminīya-Upaniṣad-Brāhmaṇa",
+          "n_tokens": 22367
+        },
+        {
+          "doc_id": "Bṛhadāraṇyakopaniṣad",
+          "n_tokens": 18889
+        },
+        {
+          "doc_id": "Chāndogyopaniṣad",
+          "n_tokens": 15761
+        },
+        {
+          "doc_id": "Taittirīyopaniṣad",
+          "n_tokens": 2462
+        },
+        {
+          "doc_id": "Kaṭhopaniṣad",
+          "n_tokens": 2129
+        }
+      ],
+      "royal_control": [
+        {
+          "doc_id": "dcs-464-10474",
+          "n_tokens": 107
+        },
+        {
+          "doc_id": "dcs-464-10475",
+          "n_tokens": 149
+        },
+        {
+          "doc_id": "dcs-464-10522",
+          "n_tokens": 115
+        },
+        {
+          "doc_id": "dcs-464-10546",
+          "n_tokens": 144
+        },
+        {
+          "doc_id": "dcs-464-11445",
+          "n_tokens": 50
+        }
+      ],
+      "magical": [
+        {
+          "doc_id": "dcs-464-11612",
+          "n_tokens": 1245
+        },
+        {
+          "doc_id": "dcs-464-12076",
+          "n_tokens": 1195
+        },
+        {
+          "doc_id": "dcs-464-11938",
+          "n_tokens": 1145
+        },
+        {
+          "doc_id": "dcs-464-11438",
+          "n_tokens": 1108
+        },
+        {
+          "doc_id": "dcs-464-12160",
+          "n_tokens": 996
+        }
+      ]
     }
   },
   "notes": {
@@ -424,6 +536,28 @@
       "magical": {
         "rule": null,
         "reason_empty": "Greek Magical Papyri (PGM) are not in the Diorisis literary corpus; the Greek magical slot is EMPTY and every magical-theme comparison excludes Greek"
+      }
+    },
+    "sanskrit": {
+      "cosmogonic": {
+        "rule": "pinned DCS Ṛgveda cosmogonic hymns + vrtra merge (dcs-450-10015+10119+10060)",
+        "reason_empty": null
+      },
+      "hymnic": {
+        "rule": "pinned DCS Ṛgveda hymnic chapters",
+        "reason_empty": null
+      },
+      "wisdom": {
+        "rule": "pinned principal Upaniṣads, grouped by text_name into one doc each",
+        "reason_empty": null
+      },
+      "royal_control": {
+        "rule": "pinned DCS Atharvaveda royal-control chapters",
+        "reason_empty": null
+      },
+      "magical": {
+        "rule": "5 longest Atharvaveda (Śaunaka) chapters, excluding royal-control picks and books ['14', '18'] (wedding/funerary liturgy)",
+        "reason_empty": null
       }
     }
   }

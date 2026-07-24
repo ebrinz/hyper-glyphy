@@ -5,24 +5,11 @@
   "dropped_docs": {
     "sumerian": [],
     "hittite": [],
-    "greek": []
+    "greek": [],
+    "sanskrit": []
   },
   "slot_pair_rsa": {
-    "hittite-greek": {
-      "rho": 0.5,
-      "p": 0.5,
-      "n_perms": 6,
-      "exhaustive": true,
-      "ladder": [
-        "cosmogonic",
-        "hymnic",
-        "royal_control"
-      ],
-      "themes_dropped_from_ladder": [
-        "magical"
-      ]
-    },
-    "hittite-sumerian": {
+    "sumerian-hittite": {
       "rho": 0.3143,
       "p": 0.25,
       "n_perms": 24,
@@ -37,9 +24,67 @@
         "wisdom"
       ]
     },
-    "greek-sumerian": {
+    "sumerian-greek": {
       "rho": 1.0,
       "p": 0.1667,
+      "n_perms": 6,
+      "exhaustive": true,
+      "ladder": [
+        "cosmogonic",
+        "hymnic",
+        "royal_control"
+      ],
+      "themes_dropped_from_ladder": [
+        "wisdom",
+        "magical"
+      ]
+    },
+    "sumerian-sanskrit": {
+      "rho": -0.3333,
+      "p": 0.7667,
+      "n_perms": 120,
+      "exhaustive": true,
+      "ladder": [
+        "cosmogonic",
+        "hymnic",
+        "wisdom",
+        "royal_control",
+        "magical"
+      ],
+      "themes_dropped_from_ladder": []
+    },
+    "hittite-greek": {
+      "rho": 0.5,
+      "p": 0.5,
+      "n_perms": 6,
+      "exhaustive": true,
+      "ladder": [
+        "cosmogonic",
+        "hymnic",
+        "royal_control"
+      ],
+      "themes_dropped_from_ladder": [
+        "magical"
+      ]
+    },
+    "hittite-sanskrit": {
+      "rho": -0.3714,
+      "p": 0.8333,
+      "n_perms": 24,
+      "exhaustive": true,
+      "ladder": [
+        "cosmogonic",
+        "hymnic",
+        "royal_control",
+        "magical"
+      ],
+      "themes_dropped_from_ladder": [
+        "wisdom"
+      ]
+    },
+    "greek-sanskrit": {
+      "rho": -0.5,
+      "p": 0.8333,
       "n_perms": 6,
       "exhaustive": true,
       "ladder": [
@@ -55,9 +100,13 @@
   },
   "ie_gradient": {
     "rho_hittite_greek": 0.5,
-    "rho_hittite_sumerian": 0.3143,
-    "rho_greek_sumerian": 1.0,
-    "hittite_greek_highest": false
+    "rho_hittite_sanskrit": -0.3714,
+    "rho_greek_sanskrit": -0.5,
+    "rho_sumerian_hittite": 0.3143,
+    "rho_sumerian_greek": 1.0,
+    "rho_sumerian_sanskrit": -0.3333,
+    "ie_pairs_mean": -0.12380000000000001,
+    "non_ie_pairs_mean": 0.327
   },
   "positive_control": {
     "ladder": [
@@ -88,10 +137,47 @@
     "discreteness_note": "3-point Spearman (K=3 ladder) takes only discrete values {+/-1, +/-0.5, 0}; ~42.6% of null draws tie at rho=+0.5 (the null mode). Named plan controls CTH 344 (kumarbi) and CTH 345 (ullikummi) both sit at the 58.98th percentile, equal to this null mode — not elevated above chance. Illuyanka (CTH 321, not a plan-named control) at the 90.15th percentile reaches the maximum attainable value under this discreteness (midrank over ~19.7% of null draws tied at rho=+1.0; equivalent one-tailed p~0.20).",
     "verdict": "FAIL — named controls at null mode; per plan, cross-language doc-level claims narrow to within-language planes"
   },
+  "vrtra_control": {
+    "ladder": {
+      "vs_illuyanka": [
+        "cosmogonic",
+        "hymnic",
+        "royal_control",
+        "magical"
+      ],
+      "vs_theogony": [
+        "cosmogonic",
+        "hymnic",
+        "royal_control"
+      ]
+    },
+    "n_null": 1000,
+    "sub_controls": {
+      "vs_illuyanka": {
+        "rho": 0.4,
+        "percentile": 90.55,
+        "verdict": "supports the IE combat-myth link",
+        "n_null": 1000,
+        "discreteness_note": "4-point Spearman (K=4 ladder) takes only discrete values; ~0.0% of null draws tie at rho=+0.5 and ~0.0% tie at rho=+1.0."
+      },
+      "vs_theogony": {
+        "rho": 0.5,
+        "percentile": 62.3,
+        "verdict": "fails, consistent with the Kumarbi-control finding",
+        "n_null": 1000,
+        "discreteness_note": "3-point Spearman (K=3 ladder) takes only discrete values; ~75.4% of null draws tie at rho=+0.5 and ~0.0% tie at rho=+1.0."
+      }
+    },
+    "bands": {
+      "supports": ">=90th pctile",
+      "fails": "<=75th pctile",
+      "else": "inconclusive"
+    }
+  },
   "translation_delta": {
     "sumerian": {
       "n_docs": 39,
-      "spearman": 0.8916,
+      "spearman": 0.8838,
       "largest_rank_deltas": [
         {
           "pair": [
@@ -99,17 +185,8 @@
             "X000010"
           ],
           "rank_native": 173.0,
-          "rank_aligned": 528.0,
-          "delta": -355.0
-        },
-        {
-          "pair": [
-            "c223",
-            "X000010"
-          ],
-          "rank_native": 147.0,
-          "rank_aligned": 488.0,
-          "delta": -341.0
+          "rank_aligned": 529.0,
+          "delta": -356.0
         },
         {
           "pair": [
@@ -117,8 +194,17 @@
             "X000010"
           ],
           "rank_native": 140.0,
-          "rank_aligned": 479.0,
-          "delta": -339.0
+          "rank_aligned": 483.0,
+          "delta": -343.0
+        },
+        {
+          "pair": [
+            "c223",
+            "X000010"
+          ],
+          "rank_native": 147.0,
+          "rank_aligned": 489.0,
+          "delta": -342.0
         },
         {
           "pair": [
@@ -126,8 +212,8 @@
             "X000010"
           ],
           "rank_native": 156.0,
-          "rank_aligned": 495.0,
-          "delta": -339.0
+          "rank_aligned": 496.0,
+          "delta": -340.0
         },
         {
           "pair": [
@@ -135,23 +221,23 @@
             "X000010"
           ],
           "rank_native": 163.0,
-          "rank_aligned": 497.0,
-          "delta": -334.0
+          "rank_aligned": 503.0,
+          "delta": -340.0
         }
       ]
     },
     "hittite": {
       "n_docs": 18,
-      "spearman": 0.8115,
+      "spearman": 0.8514,
       "largest_rank_deltas": [
         {
           "pair": [
-            "KUB 1.1+",
-            "KUB 27.1"
+            "illuyanka",
+            "KUB 24.1+"
           ],
-          "rank_native": 28.0,
-          "rank_aligned": 86.0,
-          "delta": -58.0
+          "rank_native": 126.0,
+          "rank_aligned": 68.0,
+          "delta": 58.0
         },
         {
           "pair": [
@@ -159,41 +245,41 @@
             "KBo 4.2+"
           ],
           "rank_native": 90.0,
-          "rank_aligned": 147.0,
-          "delta": -57.0
+          "rank_aligned": 148.0,
+          "delta": -58.0
         },
         {
           "pair": [
-            "ullikummi",
-            "KUB 5.1+"
+            "illuyanka",
+            "KUB 24.3+"
           ],
-          "rank_native": 56.0,
-          "rank_aligned": 112.0,
-          "delta": -56.0
-        },
-        {
-          "pair": [
-            "KUB 24.3+",
-            "KUB 5.1+"
-          ],
-          "rank_native": 74.0,
-          "rank_aligned": 130.0,
-          "delta": -56.0
-        },
-        {
-          "pair": [
-            "KBo 3.5+",
-            "KBo 15.37"
-          ],
-          "rank_native": 85.0,
-          "rank_aligned": 30.0,
+          "rank_native": 125.0,
+          "rank_aligned": 70.0,
           "delta": 55.0
+        },
+        {
+          "pair": [
+            "illuyanka",
+            "KUB 24.2"
+          ],
+          "rank_native": 131.0,
+          "rank_aligned": 80.0,
+          "delta": 51.0
+        },
+        {
+          "pair": [
+            "KUB 24.1+",
+            "Bo 86_299"
+          ],
+          "rank_native": 144.0,
+          "rank_aligned": 98.0,
+          "delta": 46.0
         }
       ]
     },
     "greek": {
       "n_docs": 12,
-      "spearman": 0.9154,
+      "spearman": 0.9044,
       "largest_rank_deltas": [
         {
           "pair": [
@@ -201,8 +287,8 @@
             "Xenophon (0032) - Anabasis (006)"
           ],
           "rank_native": 29.0,
-          "rank_aligned": 57.0,
-          "delta": -28.0
+          "rank_aligned": 56.0,
+          "delta": -27.0
         },
         {
           "pair": [
@@ -210,17 +296,8 @@
             "Xenophon (0032) - Anabasis (006)"
           ],
           "rank_native": 34.0,
-          "rank_aligned": 53.0,
-          "delta": -19.0
-        },
-        {
-          "pair": [
-            "Hesiod (0020) - Theogony (001)",
-            "Hymns (0013) - Hymn 03 To Apollo (003)"
-          ],
-          "rank_native": 57.0,
-          "rank_aligned": 41.0,
-          "delta": 16.0
+          "rank_aligned": 57.0,
+          "delta": -23.0
         },
         {
           "pair": [
@@ -228,8 +305,17 @@
             "Thucydides (0003) - History (001)"
           ],
           "rank_native": 28.0,
-          "rank_aligned": 43.0,
-          "delta": -15.0
+          "rank_aligned": 44.0,
+          "delta": -16.0
+        },
+        {
+          "pair": [
+            "Hesiod (0020) - Theogony (001)",
+            "Hymns (0013) - Hymn 03 To Apollo (003)"
+          ],
+          "rank_native": 57.0,
+          "rank_aligned": 42.0,
+          "delta": 15.0
         },
         {
           "pair": [
@@ -237,8 +323,59 @@
             "Herodotus (0016) - Histories (001)"
           ],
           "rank_native": 20.0,
-          "rank_aligned": 6.0,
-          "delta": 14.0
+          "rank_aligned": 5.0,
+          "delta": 15.0
+        }
+      ]
+    },
+    "sanskrit": {
+      "n_docs": 25,
+      "spearman": 0.9378,
+      "largest_rank_deltas": [
+        {
+          "pair": [
+            "dcs-450-9905",
+            "Kaṭhopaniṣad"
+          ],
+          "rank_native": 161.0,
+          "rank_aligned": 272.0,
+          "delta": -111.0
+        },
+        {
+          "pair": [
+            "dcs-450-9905",
+            "Chāndogyopaniṣad"
+          ],
+          "rank_native": 165.0,
+          "rank_aligned": 263.0,
+          "delta": -98.0
+        },
+        {
+          "pair": [
+            "dcs-450-10579",
+            "dcs-450-10697"
+          ],
+          "rank_native": 218.0,
+          "rank_aligned": 122.0,
+          "delta": 96.0
+        },
+        {
+          "pair": [
+            "dcs-450-9905",
+            "Taittirīyopaniṣad"
+          ],
+          "rank_native": 149.0,
+          "rank_aligned": 244.0,
+          "delta": -95.0
+        },
+        {
+          "pair": [
+            "vrtra",
+            "dcs-450-10579"
+          ],
+          "rank_native": 249.0,
+          "rank_aligned": 160.0,
+          "delta": 89.0
         }
       ]
     }
@@ -259,183 +396,262 @@
     "status": {
       "sumerian": "ok",
       "hittite": "ok",
-      "greek": "ok"
+      "greek": "ok",
+      "sanskrit": "ok"
     },
     "theme_mean_fingerprints": {
       "sumerian": {
         "cosmogonic": [
-          0.1496,
-          0.043,
-          0.0713,
-          0.255,
-          0.0589,
-          0.0618,
-          0.0787,
-          0.2295,
-          0.122,
-          0.0728
+          0.1598,
+          0.0418,
+          0.0704,
+          0.2534,
+          0.0582,
+          0.061,
+          0.0815,
+          0.228,
+          0.1277,
+          0.0733
         ],
         "hymnic": [
-          0.1456,
-          0.0432,
-          0.0702,
-          0.2573,
-          0.0583,
-          0.064,
-          0.0563,
-          0.2318,
-          0.1225,
-          0.0678
+          0.1556,
+          0.0406,
+          0.0703,
+          0.2563,
+          0.0571,
+          0.0624,
+          0.058,
+          0.2299,
+          0.1293,
+          0.0683
         ],
         "wisdom": [
-          0.1364,
-          0.0397,
-          0.0738,
-          0.2525,
-          0.0633,
-          0.0618,
-          0.0648,
-          0.2154,
-          0.1234,
-          0.0588
+          0.1471,
+          0.0392,
+          0.0712,
+          0.2521,
+          0.0627,
+          0.0615,
+          0.0676,
+          0.2118,
+          0.1308,
+          0.0585
         ],
         "royal_control": [
-          0.1475,
-          0.0424,
-          0.0699,
-          0.252,
+          0.1585,
+          0.0412,
+          0.069,
+          0.251,
           0.0636,
-          0.0627,
-          0.0711,
-          0.2302,
-          0.1216,
-          0.0688
+          0.0614,
+          0.0729,
+          0.2263,
+          0.1272,
+          0.0707
         ],
         "magical": [
-          0.1385,
-          0.0363,
-          0.0794,
-          0.2625,
-          0.0587,
-          0.108,
-          0.1027,
-          0.2123,
-          0.132,
-          0.0676
+          0.1446,
+          0.0359,
+          0.0767,
+          0.2621,
+          0.0583,
+          0.1128,
+          0.1108,
+          0.2106,
+          0.1383,
+          0.068
         ]
       },
       "hittite": {
         "cosmogonic": [
-          0.0241,
-          -0.0217,
-          0.0061,
-          0.0856,
-          -0.0088,
-          -0.0002,
-          0.0844,
-          0.0894,
-          0.0816,
-          0.0787
+          0.0147,
+          -0.0114,
+          0.0045,
+          0.0983,
+          0.0023,
+          0.0036,
+          0.0758,
+          0.072,
+          0.0668,
+          0.0776
         ],
         "hymnic": [
-          -0.027,
-          0.0095,
-          0.0324,
-          0.0665,
-          -0.0242,
-          0.0102,
-          0.1087,
-          0.0829,
-          0.0283,
-          0.0286
+          -0.0316,
+          0.0209,
+          0.0187,
+          0.0888,
+          -0.0208,
+          0.0161,
+          0.115,
+          0.0691,
+          0.0302,
+          0.0237
         ],
         "royal_control": [
-          0.0273,
-          -0.0181,
-          0.0149,
-          0.0558,
-          0.0069,
-          0.027,
-          0.0871,
-          0.0588,
-          0.0564,
-          0.0405
+          0.0249,
+          -0.0052,
+          -0.0007,
+          0.0576,
+          0.0142,
+          0.0281,
+          0.0955,
+          0.0525,
+          0.0629,
+          0.0522
         ],
         "magical": [
-          0.0439,
-          0.0057,
-          0.0079,
-          0.0452,
-          0.0212,
-          0.0492,
-          0.0736,
-          0.0783,
-          0.0888,
-          0.0501
+          0.0413,
+          0.0227,
+          0.0046,
+          0.0794,
+          0.0239,
+          0.0335,
+          0.0687,
+          0.068,
+          0.0833,
+          0.0487
         ]
       },
       "greek": {
         "cosmogonic": [
-          0.1152,
-          0.0284,
-          0.0586,
-          0.2105,
-          0.0789,
-          0.0915,
-          0.1663,
-          0.1279,
-          0.1017,
-          0.0679
+          0.1091,
+          0.0513,
+          0.0753,
+          0.1929,
+          0.0714,
+          0.0933,
+          0.1618,
+          0.153,
+          0.1024,
+          0.0735
         ],
         "hymnic": [
-          0.1112,
-          0.0247,
-          0.0542,
-          0.2108,
-          0.0657,
-          0.0989,
-          0.1658,
-          0.1273,
-          0.0949,
-          0.063
+          0.1035,
+          0.0445,
+          0.0699,
+          0.1945,
+          0.0608,
+          0.1032,
+          0.1653,
+          0.1496,
+          0.0991,
+          0.0652
         ],
         "royal_control": [
-          0.0768,
-          0.0296,
-          0.0439,
-          0.2009,
-          0.0831,
-          0.108,
-          0.1719,
-          0.1223,
-          0.0943,
-          0.0503
+          0.0678,
+          0.043,
+          0.0537,
+          0.1873,
+          0.0793,
+          0.1059,
+          0.1741,
+          0.1359,
+          0.0928,
+          0.0431
+        ]
+      },
+      "sanskrit": {
+        "cosmogonic": [
+          0.0963,
+          0.0271,
+          0.0671,
+          0.1916,
+          0.0993,
+          0.0897,
+          0.1794,
+          0.1284,
+          0.141,
+          0.0713
+        ],
+        "hymnic": [
+          0.1,
+          0.0113,
+          0.0618,
+          0.2041,
+          0.1007,
+          0.0966,
+          0.1626,
+          0.1324,
+          0.1343,
+          0.0564
+        ],
+        "wisdom": [
+          0.0838,
+          0.0208,
+          0.0576,
+          0.2047,
+          0.0957,
+          0.1018,
+          0.1758,
+          0.1012,
+          0.1259,
+          0.0552
+        ],
+        "royal_control": [
+          0.0842,
+          0.0186,
+          0.0598,
+          0.2033,
+          0.1004,
+          0.1094,
+          0.1654,
+          0.1328,
+          0.1348,
+          0.0551
+        ],
+        "magical": [
+          0.09,
+          0.0217,
+          0.0681,
+          0.1957,
+          0.103,
+          0.1109,
+          0.1738,
+          0.1246,
+          0.1372,
+          0.0587
         ]
       }
     },
     "cosmogonic_cross_slot": {
-      "hittite-greek": 0.8061,
-      "hittite-sumerian": 0.903,
-      "greek-sumerian": 0.8303
+      "sumerian-hittite": 0.7939,
+      "sumerian-greek": 0.8788,
+      "sumerian-sanskrit": 0.7091,
+      "hittite-greek": 0.7212,
+      "hittite-sanskrit": 0.6242,
+      "greek-sanskrit": 0.8182
     },
     "mismatched_baseline": {
+      "sumerian-hittite": {
+        "mean": 0.5523,
+        "max": 0.7818
+      },
+      "sumerian-greek": {
+        "mean": 0.7424,
+        "max": 0.8788
+      },
+      "sumerian-sanskrit": {
+        "mean": 0.6255,
+        "max": 0.7333
+      },
       "hittite-greek": {
-        "mean": 0.6418,
-        "max": 0.7939
+        "mean": 0.6593,
+        "max": 0.7697
       },
-      "hittite-sumerian": {
-        "mean": 0.547,
-        "max": 0.8667
+      "hittite-sanskrit": {
+        "mean": 0.6856,
+        "max": 0.8424
       },
-      "greek-sumerian": {
-        "mean": 0.6939,
-        "max": 0.8303
+      "greek-sanskrit": {
+        "mean": 0.8525,
+        "max": 0.9636
       }
     },
     "within_slot_baseline": {
-      "sumerian": 0.8982,
-      "hittite": 0.7556,
-      "greek": 0.9434
+      "sumerian": 0.9055,
+      "hittite": 0.7758,
+      "greek": 0.903,
+      "sanskrit": 0.9636
     },
     "baseline_note": "matched-theme cosmogonic_cross_slot correlations must be read against the mismatched-theme cross-slot baseline (theme_a != theme_b, per slot pair); within-slot theme-theme means are provided as an upper reference. Reviewer recomputation from committed data: mismatched mean 0.55-0.69, max 0.87; within-slot (Sumerian/Greek) 0.87-0.94 — Hittite within-slot is lower (~0.76) due to SISKUR-ritual construct mismatch in the magical theme."
   },
