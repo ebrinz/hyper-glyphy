@@ -14,9 +14,10 @@ abstract: |
   validation cosine at 0.1145, inside the pre-registered ≤ 0.12 band — anchors
   were never the constraint, and the stronger-anchors lever and Plane A were
   retired. Suite v2 (shared gloss filters, plateau alpha rule) then improved
-  combined test accuracy in all six slots, fixed the Akkadian-Gemma
-  alpha-selection pathology, and left the whitened-Gemma target ahead of GloVe
-  in six of six slots. The capstone K=5 myth study delivered the first
+  combined test accuracy in all six slots on the primary whitened-Gemma
+  target, fixed the Akkadian-Gemma alpha-selection pathology, and left the
+  whitened-Gemma target ahead of GloVe in six of six slots. The capstone K=5
+  myth study delivered the first
   adequately-powered Plane-B test in the study's history — a real null
   (sumerian–sanskrit, ρ=−0.33, exhaustive p=0.77) — alongside the study's first
   pre-registered positive, a band-edge result for Vṛtra↔Illuyanka (90.55th
@@ -46,9 +47,10 @@ the strongest lexicon join in the project (94.9%), landed its Procrustes
 validation cosine at 0.1145, inside the pre-registered ≤ 0.12 band — anchors
 were never the constraint, and the stronger-anchors lever and Plane A were
 retired. Suite v2 (shared gloss filters, plateau alpha rule) then improved
-combined test accuracy in all six slots, fixed the Akkadian-Gemma
-alpha-selection pathology, and left the whitened-Gemma target ahead of GloVe
-in six of six slots. The capstone K=5 myth study delivered the first
+combined test accuracy in all six slots on the primary whitened-Gemma
+target, fixed the Akkadian-Gemma alpha-selection pathology, and left the
+whitened-Gemma target ahead of GloVe in six of six slots. The capstone K=5
+myth study delivered the first
 adequately-powered Plane-B test in the study's history — a real null
 (sumerian–sanskrit, ρ=−0.33, exhaustive p=0.77) — alongside the study's first
 pre-registered positive, a band-edge result for Vṛtra↔Illuyanka (90.55th
@@ -107,7 +109,8 @@ smoothed over.
 
 The arc's four results, in order: (i) suite v2, a cleanup pass (shared gloss
 filters, a plateau alpha rule) that improved combined accuracy in all six
-slots and fixed a known selection pathology (Section 3.1); (ii) the Sanskrit
+slots on the primary whitened-Gemma target and fixed a known selection
+pathology (Section 3.1); (ii) the Sanskrit
 slot as a pre-registered anchor-quality experiment whose verdict retired an
 entire improvement lever (Section 3.2); (iii) the document-level gates that
 routed the myth study away from cross-language cosine (Section 3.3); and
